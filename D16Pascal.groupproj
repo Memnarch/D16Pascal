@@ -1,0 +1,48 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{60088A6B-588B-4EF8-8C3B-FDFAE7F51882}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="Lexer\LexerProj.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="CompilerProj.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="LexerProj">
+			<MSBuild Projects="Lexer\LexerProj.dproj"/>
+		</Target>
+		<Target Name="LexerProj:Clean">
+			<MSBuild Projects="Lexer\LexerProj.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="LexerProj:Make">
+			<MSBuild Projects="Lexer\LexerProj.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="CompilerProj">
+			<MSBuild Projects="CompilerProj.dproj"/>
+		</Target>
+		<Target Name="CompilerProj:Clean">
+			<MSBuild Projects="CompilerProj.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="CompilerProj:Make">
+			<MSBuild Projects="CompilerProj.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="LexerProj;CompilerProj"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="LexerProj:Clean;CompilerProj:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="LexerProj:Make;CompilerProj:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>
