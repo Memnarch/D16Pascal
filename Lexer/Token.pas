@@ -6,7 +6,8 @@ uses
   Classes, Types;
 
 type
-  TTokenType = (ttIdentifier, ttNumber, ttOperator, ttCharLiteral);
+  TTokenType = (ttIdentifier, ttNumber, ttTermOp, ttFacOp, ttRelOp, ttCharLiteral, ttDelimiter, ttAssignOp);
+  TTokenTypes = set of TTokenType;
 
   TToken = class
   private
@@ -16,6 +17,7 @@ type
     constructor Create(AContent: string; AType: TTokenType);
     function IsContent(AContent: string): Boolean;
     function IsType(AType: TTokenType): Boolean;
+    function ToString(): string;
     procedure MatchContent(AContent: string);
     procedure MatchType(AType: TTokenType);
     property Content: string read FContent;
@@ -23,6 +25,9 @@ type
   end;
 
   function GetTokenName(AType: TTokenType): string;
+
+const
+  COperators = [ttTermOp, ttFacOp, ttRelOp, ttAssignOp];
 
 implementation
 
@@ -66,6 +71,11 @@ begin
   begin
     raise Exception.Create('Expected ' + QuotedStr(GetTokenName(AType)) + ' but found ' + QuotedStr(GetTokenName(FTokenType)));
   end;
+end;
+
+function TToken.ToString: string;
+begin
+  Result := 'Content: ' + QuotedStr(FContent) + ' Type: ' + QuotedStr(GetTokenName(FTokenType));
 end;
 
 end.

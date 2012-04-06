@@ -4,10 +4,14 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs;
+  Dialogs, StdCtrls;
 
 type
   TForm1 = class(TForm)
+    Source: TMemo;
+    Target: TMemo;
+    Lex: TButton;
+    procedure LexClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -19,6 +23,23 @@ var
 
 implementation
 
+uses
+  Lexer, Token;
+
 {$R *.dfm}
+
+procedure TForm1.LexClick(Sender: TObject);
+var
+  LLexer: TLexer;
+  LToken: TToken;
+begin
+  LLexer := TLexer.Create();
+  LLexer.LoadFromString(Source.Text);
+  Target.Clear;
+  for LToken in LLexer.Tokens do
+  begin
+    Target.Lines.Add(LToken.ToString);
+  end;
+end;
 
 end.
