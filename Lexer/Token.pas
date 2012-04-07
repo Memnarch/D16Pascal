@@ -6,7 +6,8 @@ uses
   Classes, Types;
 
 type
-  TTokenType = (ttIdentifier, ttNumber, ttTermOp, ttFacOp, ttRelOp, ttCharLiteral, ttDelimiter, ttAssignOp);
+  TTokenType = (ttNone, ttIdentifier, ttNumber, ttTermOp, ttFacOp, ttRelOp, ttCharLiteral,
+    ttDelimiter, ttAssignOp, ttEOF, ttReserved);
   TTokenTypes = set of TTokenType;
 
   TToken = class

@@ -11,7 +11,9 @@ type
     FSource: string;
     FPos: Integer;
     FLine: Integer;
+    FTokenIndex: Integer;
     FTokens: TObjectList<TToken>;
+    FReserved: TStringList;
     procedure ParseSource();
     procedure ParseIdentifier();
     procedure ParseOperator();
@@ -19,34 +21,79 @@ type
     procedure ParseCharLiteral();
     procedure NextChar();
     procedure NewToken(AContent: string; AType: TTokenType);
+    procedure InitReserved();
     function GetChar(): Char;
     function IsNextChar(AChar: Char): Boolean;
+    function GetEOF: Boolean;
   public
     constructor Create();
     destructor Destroy(); override;
     procedure LoadFromFile(AFile: string);
     procedure LoadFromString(AString: string);
+    function GetToken(AContent: string = ''; AType: TTokenType = ttNone): TToken;
+    function PeekToken(): TToken;
+    function AHeadToken(): TToken;
     property Tokens: TObjectList<TToken> read FTokens;
+    property EOF: Boolean read GetEOF;
   end;
 
 implementation
 
 { TLexer }
 
+function TLexer.AHeadToken: TToken;
+begin
+  Result := FTokens.Items[FTokenIndex+1];
+end;
+
 constructor TLexer.Create;
 begin
   FTokens := TObjectList<TToken>.Create();
+  FReserved := TStringList.Create();
+  InitReserved();
 end;
 
 destructor TLexer.Destroy;
 begin
   FTokens.Free;
+  FReserved.Free;
   inherited;
 end;
 
 function TLexer.GetChar: Char;
 begin
   Result := FSource[FPos];
+end;
+
+function TLexer.GetEOF: Boolean;
+begin
+  Result := FTokenIndex = FTokens.Count-1;
+end;
+
+function TLexer.GetToken(AContent: string = ''; AType: TTokenType = ttNone): TToken;
+begin
+  Result := PeekToken();
+  if AContent <> '' then
+  begin
+    Result.MatchContent(AContent);
+  end;
+  if AType <> ttNone then
+  begin
+    Result.MatchType(AType);
+  end;
+  Inc(FTokenIndex);
+end;
+
+procedure TLexer.InitReserved;
+begin
+  FReserved.Add('unit');
+  FReserved.Add('end');
+  FReserved.Add('begin');
+  FReserved.Add('var');
+  FReserved.Add('type');
+  FReserved.Add('uses');
+  FReserved.Add('const');
+  FReserved.Add('asm');
 end;
 
 function TLexer.IsNextChar(AChar: Char): Boolean;
@@ -70,6 +117,8 @@ end;
 procedure TLexer.LoadFromString(AString: string);
 begin
   FSource := Trim(AString);
+  FTokens.Clear;
+  FTokenIndex := 0;
   ParseSource();
 end;
 
@@ -111,7 +160,14 @@ begin
     NextChar();
     LChar := GetChar();
   end;
-  NewToken(LContent, ttIdentifier);
+  if FReserved.IndexOf(LContent) < 0 then
+  begin
+    NewToken(LContent, ttIdentifier);
+  end
+  else
+  begin
+    NewToken(LContent, ttReserved);
+  end;
 end;
 
 procedure TLexer.ParseNumber;
@@ -249,6 +305,12 @@ begin
         end;
     end;
   end;
+  NewToken('EOF', ttEOF);
+end;
+
+function TLexer.PeekToken: TToken;
+begin
+  Result := FTokens.Items[FTokenIndex];
 end;
 
 end.

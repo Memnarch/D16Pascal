@@ -52,6 +52,13 @@
 			<DCCReference Include="Main.pas">
 				<Form>Form2</Form>
 			</DCCReference>
+			<DCCReference Include="Compiler.pas"/>
+			<DCCReference Include="Lexer\Lexer.pas"/>
+			<DCCReference Include="Lexer\Token.pas"/>
+			<DCCReference Include="DataType.pas"/>
+			<DCCReference Include="VarDeclaration.pas"/>
+			<DCCReference Include="CodeElement.pas"/>
+			<DCCReference Include="ProcDeclaration.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
