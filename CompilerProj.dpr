@@ -9,7 +9,18 @@ uses
   DataType in 'DataType.pas',
   VarDeclaration in 'VarDeclaration.pas',
   CodeElement in 'CodeElement.pas',
-  ProcDeclaration in 'ProcDeclaration.pas';
+  ProcDeclaration in 'ProcDeclaration.pas',
+  PascalUnit in 'PascalUnit.pas',
+  OpElement in 'OpElement.pas',
+  Relation in 'Relation.pas',
+  Expression in 'Expression.pas',
+  Term in 'Term.pas',
+  Factor in 'Factor.pas',
+  Assignment in 'Assignment.pas',
+  Optimizer in 'Optimizer.pas',
+  Condition in 'Condition.pas',
+  Loops in 'Loops.pas',
+  ProcCall in 'ProcCall.pas';
 
 {$R *.res}
 

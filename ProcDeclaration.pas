@@ -3,38 +3,46 @@ unit ProcDeclaration;
 interface
 
 uses
-  Classes, Types, CodeElement, DataType, VarDeclaration;
+  Classes, Types, CodeElement, DataType, VarDeclaration, Generics.Collections;
 
 type
   TArguments = array of TVarDeclaration;
 
   TProcDeclaration = class(TCodeElement)
   private
-    FArgs: array of TVarDeclaration;
     FResultType: TDataType;
     FIsFunction: Boolean;
-    function GetArgCount: Integer;
+    FParameters: TObjectList<TCodeElement>;
   public
-    constructor Create(AName: string; AArgs: array of TVarDeclaration; AReturnType: TDataType = nil);
+    constructor Create(AName: string); reintroduce;
+    function GetDCPUSource(): string; override;
     property IsFunction: Boolean read FIsFunction;
-    property ResultType: TDataType read FResultType;
-    property ArgCount: Integer read GetArgCount;
-    property Args: array of TVarDeclaration read FArgs;
+    property ResultType: TDataType read FResultType write FResultType;
+    property Parameters: TObjectList<TCodeElement> read FParameters;
   end;
 
 implementation
 
 { TProcDeclaration }
 
-constructor TProcDeclaration.Create(AName: string;
-  AArgs: array of TVarDeclaration; AReturnType: TDataType);
-begin
 
+{ TProcDeclaration }
+
+constructor TProcDeclaration.Create(AName: string);
+begin
+  inherited;
+  FParameters := TObjectList<TCodeElement>.Create();
 end;
 
-function TProcDeclaration.GetArgCount: Integer;
+function TProcDeclaration.GetDCPUSource: string;
 begin
-
+  Result := ':' + Name + sLineBreak;
+  Result := Result + 'set push, j' + sLineBreak;
+  Result := Result + 'set j, sp' + sLineBreak;
+  Result := Result + inherited GetDCPUSource();
+  Result := Result + 'set sp, j' + sLineBreak;
+  Result := Result + 'set j, pop' + sLineBreak;
+  Result := Result + 'set pc, pop' + sLineBreak;
 end;
 
 end.

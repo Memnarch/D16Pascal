@@ -39,6 +39,9 @@ type
 
 implementation
 
+uses
+  StrUtils;
+
 { TLexer }
 
 function TLexer.AHeadToken: TToken;
@@ -94,6 +97,8 @@ begin
   FReserved.Add('uses');
   FReserved.Add('const');
   FReserved.Add('asm');
+  FReserved.Add('function');
+  FReserved.Add('procedure');
 end;
 
 function TLexer.IsNextChar(AChar: Char): Boolean;
@@ -162,7 +167,21 @@ begin
   end;
   if FReserved.IndexOf(LContent) < 0 then
   begin
-    NewToken(LContent, ttIdentifier);
+    if SameText(LContent, 'and') then
+    begin
+      NewToken(LContent, ttFacOp);
+    end
+    else
+    begin
+      if SameText(LContent, 'or') then
+      begin
+        NewToken(LContent, ttTermOp);
+      end
+      else
+      begin
+        NewToken(LContent, ttIdentifier);
+      end;
+    end;
   end
   else
   begin

@@ -3,27 +3,73 @@ unit CodeElement;
 interface
 
 uses
-  Classes, Types;
+  Classes, Types, Generics.Collections;
 
 type
-  TCodeElement = class
-  private
-    FName: string;
-  published
-  public
-    constructor Create(AName: string);
-    property Name: string read FName;
-  end;
 
   TCodeElementClass = class of TCodeElement;
 
+  TCodeElement = class
+  private
+    FName: string;
+    FSubElements: TObjectList<TCodeElement>;
+  public
+    constructor Create(AName: string);
+    function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
+    function GetUniqueID(APrefix: string = ''): string;
+    function GetDCPUSource(): string; virtual;
+    property Name: string read FName write FName;
+    property SubElements: TObjectList<TCodeElement> read FSubElements;
+  end;
+
+
 implementation
+
+uses
+  SysUtils;
+
+var
+  GID: Integer = 0;
 
 { TCodeElement }
 
 constructor TCodeElement.Create(AName: string);
 begin
   FName := AName;
+  FSubElements := TObjectList<TCodeElement>.Create();
+end;
+
+function TCodeElement.GetDCPUSource: string;
+var
+  LElement: TCodeElement;
+begin
+  Result := '';
+  for LElement in FSubElements do
+  begin
+    Result := Result + LElement.GetDCPUSource();
+  end;
+end;
+
+function TCodeElement.GetElement(AName: string;
+  AType: TCodeElementClass): TCodeElement;
+var
+  LElement: TCodeElement;
+begin
+  Result := nil;
+  for LElement in FSubElements do
+  begin
+    if SameText(AName, LElement.Name) and LElement.InheritsFrom(AType) then
+    begin
+      Result := LElement;
+      Break;
+    end;
+  end;
+end;
+
+function TCodeElement.GetUniqueID(APrefix: string = ''): string;
+begin
+  Result := APrefix+IntToHex(GID, 4);
+  Inc(GID);
 end;
 
 end.

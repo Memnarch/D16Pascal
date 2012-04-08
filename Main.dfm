@@ -20,7 +20,6 @@ object Form2: TForm2
     Height = 496
     Align = alLeft
     TabOrder = 0
-    ExplicitHeight = 433
   end
   object Source: TMemo
     Left = 466
@@ -35,15 +34,14 @@ object Form2: TForm2
       '   TestVar: word;'
       '   Foo, FooB: word;'
       ''
-      'procedure TestProc();'
+      'procedure TestProc(A, B, C, D, E, F, G: Word;);'
       'begin'
-      ''
+      '  TestProc(1, 2, 3, 4, 5, 6, 7);'
       'end;'
       ''
       ''
       'end.')
     TabOrder = 1
-    ExplicitLeft = 465
   end
   object btnCompile: TButton
     Left = 352

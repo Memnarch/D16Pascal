@@ -59,6 +59,17 @@
 			<DCCReference Include="VarDeclaration.pas"/>
 			<DCCReference Include="CodeElement.pas"/>
 			<DCCReference Include="ProcDeclaration.pas"/>
+			<DCCReference Include="PascalUnit.pas"/>
+			<DCCReference Include="OpElement.pas"/>
+			<DCCReference Include="Relation.pas"/>
+			<DCCReference Include="Expression.pas"/>
+			<DCCReference Include="Term.pas"/>
+			<DCCReference Include="Factor.pas"/>
+			<DCCReference Include="Assignment.pas"/>
+			<DCCReference Include="Optimizer.pas"/>
+			<DCCReference Include="Condition.pas"/>
+			<DCCReference Include="Loops.pas"/>
+			<DCCReference Include="ProcCall.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

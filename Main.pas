@@ -34,7 +34,8 @@ var
 begin
   LCompiler := TCompiler.Create();
   LCompiler.CompilerSource(Source.Text);
-  Target.Text := LCompiler.Output.Text;
+  Target.Text := LCompiler.GetDCPUSource();
+  LCompiler.Free;
 end;
 
 end.

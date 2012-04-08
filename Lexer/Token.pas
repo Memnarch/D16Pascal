@@ -70,7 +70,7 @@ procedure TToken.MatchType(AType: TTokenType);
 begin
   if not IsType(AType) then
   begin
-    raise Exception.Create('Expected ' + QuotedStr(GetTokenName(AType)) + ' but found ' + QuotedStr(GetTokenName(FTokenType)));
+    raise Exception.Create('Expected ' + QuotedStr(GetTokenName(AType)) + ' but found ' + QuotedStr(GetTokenName(FTokenType)) + ' ' + QuotedStr(FContent));
   end;
 end;
 
