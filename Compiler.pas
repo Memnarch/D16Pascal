@@ -34,7 +34,7 @@ type
     procedure ParseCondition(AScope: TObjectList<TCodeElement>);
     procedure ParseWhileLoop(AScope: TObjectList<TCodeElement>);
     procedure ParseRepeatLoop(AScope: TObjectList<TCodeElement>);
-    procedure ParseRelation(AScope: TObjectList<TCodeElement>);
+    procedure ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False);
     procedure ParseExpression(AScope: TObjectList<TCodeElement>);
     procedure ParseTerm(AScope: TObjectList<TCodeElement>);
     procedure ParseFactor(AScope: TObjectList<TCodeElement>);
@@ -251,11 +251,18 @@ end;
 procedure TCompiler.ParseFactor(AScope: TObjectList<TCodeElement>);
 var
   LFactor: TFactor;
+  LInverse: Boolean;
 begin
+  LInverse := False;
+  while FLexer.PeekToken.IsContent('not') do
+  begin
+    FLexer.GetToken('not');
+    LInverse := not LInverse;
+  end;
   if FLexer.PeekToken.IsContent('(') then
   begin
     FLexer.GetToken('(');
-    ParseRelation(AScope);
+    ParseRelation(AScope, LInverse);
     FLexer.GetToken(')');
   end
   else
@@ -267,6 +274,7 @@ begin
     else
     begin
       LFactor := TFactor.Create();
+      LFactor.Inverse := LInverse;
       AScope.Add(LFactor);
       if FLexer.PeekToken.IsType(ttNumber) then
       begin
@@ -274,17 +282,23 @@ begin
       end
       else
       begin
+        if FLexer.PeekToken.IsContent('@') then
+        begin
+          FLexer.GetToken('@');
+          LFactor.GetAdress := True;
+        end;
         LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
       end;
     end;
   end;
 end;
 
-procedure TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>);
+procedure TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False);
 var
   LRelation: TRelation;
 begin
   LRelation := TRelation.Create();
+  LRelation.Inverse := AInverse;
   AScope.Add(LRelation);
   ParseExpression(LRelation.SubElements);
   if FLexer.PeekToken.IsType(ttRelOp) then

@@ -10,11 +10,15 @@ type
   private
     FVarDeclaration: TVarDeclaration;
     FValue: string;
+    FGetAdress: Boolean;
+    FInverse: Boolean;
   public
     function IsConstant(): Boolean;
     function GetDCPUSource(): string; override;
     property VarDeclaration: TVarDeclaration read FVarDeclaration write FVarDeclaration;
     property Value: string read FValue write FValue;
+    property GetAdress: Boolean read FGetAdress write FGetAdress;
+    property Inverse: Boolean read FInverse write FInverse;
   end;
 
 implementation
@@ -29,7 +33,20 @@ begin
   end
   else
   begin
-    Result := 'set push, [' + FVarDeclaration.Name + ']' + sLineBreak;
+    if FGetAdress then
+    begin
+      Result := 'set push, ' + FVarDeclaration.Name + sLineBreak;
+    end
+    else
+    begin
+      Result := 'set push, [' + FVarDeclaration.Name + ']' + sLineBreak;
+    end;
+    if Inverse then
+    begin
+      Result := Result + 'set x, pop' + sLineBreak;
+      Result := Result + 'xor x, 0xffff' + sLineBreak;
+      Result := Result + 'set push, x' + sLineBreak;
+    end;
   end;
 end;
 

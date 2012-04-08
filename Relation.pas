@@ -7,8 +7,11 @@ uses
 
 type
   TRelation = class(TOpElement)
+  private
+    FInverse: Boolean;
   public
     function GetDCPUSOurce(): string; override;
+    property Inverse: Boolean read FInverse write FInverse;
   end;
 
 implementation
@@ -22,7 +25,7 @@ function TRelation.GetDCPUSOurce: string;
 var
   LElement: TCodeElement;
   i: Integer;
-  LOp, LOpStr: string;
+  LOp, LOpStr, LTrue, LFalse: string;
 begin
   Result := '';
   for i := 0 to SubElements.Count - 1 do
@@ -30,9 +33,16 @@ begin
     Result := Result + SubElements.Items[i].GetDCPUSource();
     if i > 0 then
     begin
+      LTrue := '1';
+      LFalse := '0';
+      if (i = SubElements.Count - 1) and Inverse then
+      begin
+        LTrue := '0';
+        LFalse := '1';
+      end;
       Result := Result + 'set y, pop' + sLineBreak;
       Result := Result + 'set z, pop' + sLineBreak;
-      Result := Result + 'set x, 0' + sLineBreak;
+      Result := Result + 'set x, ' + LFalse + sLineBreak;
       LOpStr := Operators.Strings[i-1];
       case AnsiIndexText(LOpStr, ['>', '<', '>=', '<=', '=', '<>']) of
         0:
@@ -46,13 +56,13 @@ begin
         2:
         begin
           LOp := 'ifg y, z' + sLineBreak;
-          LOp := LOp + 'set x, 1' + sLineBreak;
+          LOp := LOp + 'set x, ' + LTrue + sLineBreak;
           LOp := LOp + 'ife y, z' + sLineBreak;
         end;
         3:
         begin
           LOp := 'ifg z, y' + sLineBreak;
-          LOp := LOp + 'set x, 1' + sLineBreak;
+          LOp := LOp + 'set x, ' + LTrue + sLineBreak;
           LOp := LOp + 'ife y, z' + sLineBreak;
         end;
         4:
@@ -65,9 +75,15 @@ begin
         end;
       end;
       Result := Result + LOp + sLineBreak;
-      Result := Result + 'set x, 1' + sLineBreak;
+      Result := Result + 'set x, ' + LTrue + sLineBreak;
       Result := Result + 'set push, x' + sLineBreak;
     end;
+  end;
+  if (SubElements.Count = 1) and Inverse then
+  begin
+    Result := Result + 'set x, pop' + sLineBreak;
+    Result := Result + 'xor x, 0xffff' + sLineBreak;
+    Result := Result + 'set push, x' + sLineBreak;
   end;
 end;
 

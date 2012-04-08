@@ -230,7 +230,7 @@ begin
     NewToken(LChar, ttTermOp);
     NextChar();
   end;
-  if CharInSet(LChar, ['*', '/']) then
+  if CharInSet(LChar, ['*', '/', '@']) then
   begin
     NewToken(LChar, ttFacOp);
     NextChar();
@@ -274,7 +274,7 @@ begin
         ParseCharLiteral();
       end;
 
-      '+', '-', '*', '/', '=', '<', '>':
+      '+', '-', '*', '/', '=', '<', '>', '@':
       begin
         ParseOperator();
       end;
