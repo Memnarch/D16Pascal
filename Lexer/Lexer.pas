@@ -167,13 +167,13 @@ begin
   end;
   if FReserved.IndexOf(LContent) < 0 then
   begin
-    if SameText(LContent, 'and') then
+    if AnsiIndexText(LContent, ['and', 'mod', 'shl', 'shr']) >= 0 then
     begin
       NewToken(LContent, ttFacOp);
     end
     else
     begin
-      if SameText(LContent, 'or') then
+      if AnsiIndexText(LContent, ['or', 'xor']) >= 0 then
       begin
         NewToken(LContent, ttTermOp);
       end

@@ -14,7 +14,7 @@ type
 implementation
 
 uses
-  CodeElement;
+  SysUtils, CodeElement;
 
 { TExpression }
 
@@ -45,7 +45,14 @@ begin
 
         'o':
         begin
-          LOp := 'bor';
+          if SameText(Operators.Strings[i-1], 'or') then
+          begin
+            LOp := 'bor';
+          end;
+          if SameText(Operators.Strings[i-1], 'xor') then
+          begin
+            LOp := 'xor';
+          end;
         end;
       end;
       Result := Result + LOp + ' x, y' + sLineBreak;

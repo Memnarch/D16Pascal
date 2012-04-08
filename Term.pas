@@ -14,7 +14,7 @@ type
 implementation
 
 uses
-  CodeElement;
+  SysUtils, CodeElement;
 
 { TTerm }
 
@@ -44,6 +44,21 @@ begin
         'a':
         begin
           LOp := 'and';
+        end;
+        'm':
+        begin
+          LOp := 'mod';
+        end;
+        's':
+        begin
+          if SameText(Operators.Strings[i-1], 'shl') then
+          begin
+            LOp := 'shl';
+          end;
+          if SameText(Operators.Strings[i-1], 'shr') then
+          begin
+            LOp := 'shr';
+          end;
         end;
       end;
       Result := Result + LOp + ' x, y' + sLineBreak;
