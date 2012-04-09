@@ -26,13 +26,14 @@ type
 implementation
 
 uses
-  StrUtils;
+  StrUtils, SysUtils;
 
 { TFactor }
 
 function TFactor.GetDCPUSource: string;
 var
   LValToPush: string;
+  LParts: TStringDynArray;
 begin
   Result := '';
   if IsConstant then
@@ -44,7 +45,24 @@ begin
   begin
     if FGetAdress or ((FVarDeclaration.ParamIndex > 0) and (FVarDeclaration.ParamIndex <= 3)) then
     begin
-      LValToPush := FVarDeclaration.GetAccessIdentifier();
+      if VarDeclaration.IsLocal then
+      begin
+        LParts := SplitString(FVarDeclaration.GetAccessIdentifier, '+');
+        if Length(LParts) = 1 then
+        begin
+          LValToPush := Trim(LParts[0]);
+        end
+        else
+        begin
+          Result := Result + 'set x, ' + Trim(LParts[1]) + sLineBreak;
+          Result := Result + 'add x, ' + Trim(LParts[0]) + sLineBreak;
+          LValToPush := 'x';
+        end;
+      end
+      else
+      begin
+        LValToPush := FVarDeclaration.GetAccessIdentifier();
+      end;
       //Result := 'set push, ' +  + sLineBreak;
     end
     else

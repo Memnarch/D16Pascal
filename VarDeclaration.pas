@@ -38,7 +38,10 @@ begin
 end;
 
 function TVarDeclaration.GetAccessIdentifier: string;
+var
+  LMod: Integer;
 begin
+  Result := '';
   if IsParameter then
   begin
     case FParamIndex of
@@ -55,14 +58,24 @@ begin
         Result := 'c';
       end;
       else
-        Result := IntToStr(FParamIndex-4) + ' + j';
+        LMod :=  FParamIndex-4;
+        Result := 'j';
+        if LMod > 0 then
+        begin
+          Result := IntToSTr(LMod) + ' + ' + Result;
+        end;
     end;
   end
   else
   begin
     if IsLocal then
     begin
-      Result := IntToStr(Abs(FParamIndex+1)) + ' + j';
+      LMod := Abs(FParamIndex+1);
+      Result := 'j';
+      if LMod > 0 then
+      begin
+        Result := IntToStr(LMod) + ' + ' + Result;
+      end;
     end
     else
     begin

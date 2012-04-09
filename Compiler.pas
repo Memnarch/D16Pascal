@@ -350,12 +350,20 @@ begin
             LFactor.GetAdress := True;
           end;
           LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+          if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
+          begin
+            Fatal('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
+          end;
         end;
       end;
       if FLexer.PeekToken.IsContent('^') then
       begin
         FLexer.GetToken();
         LFactor.Dereference := True;
+        if LFactor.GetAdress then
+        begin
+          Fatal('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
+        end;
       end;
     end;
   end;
