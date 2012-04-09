@@ -3,12 +3,19 @@ unit PascalUnit;
 interface
 
 uses
-  Classes, Types, CodeElement;
+  Classes, Types, Generics.Collections, CodeElement;
 
 type
   TPascalUnit = class(TCodeElement)
+  private
+    FFooterSource: TStringList;
+    FInitSection: TObjectList<TCodeElement>;
   public
+    constructor Create(AName: string); reintroduce;
+    destructor Destroy(); override;
     function GetDCPUSource(): string; override;
+    property FooterSource: TStringList read FFooterSource;
+    property InitSection: TObjectList<TCodeElement> read FInitSection;
   end;
 
 implementation
@@ -18,10 +25,24 @@ uses
 
 { TPascalUnit }
 
+constructor TPascalUnit.Create(AName: string);
+begin
+  inherited;
+  FFooterSource := TStringList.Create();
+  FInitSection := TObjectList<TCodeElement>.Create();
+end;
+
+destructor TPascalUnit.Destroy;
+begin
+  FFooterSource.Free;
+  FinitSection.Free;
+  inherited;
+end;
+
 function TPascalUnit.GetDCPUSource: string;
 var
   LElement: TCodeElement;
-  LData: string;
+  LData, LInit: string;
 begin
   Result := '';
   LData := '';
@@ -36,7 +57,12 @@ begin
       LData := LData + LElement.GetDCPUSource();
     end;
   end;
-  Result := Result + LData;
+  LInit := '';
+  for LElement in FInitSection do
+  begin
+    LInit := LInit + LElement.GetDCPUSource();
+  end;
+  Result := LInit + Result + LData + FFooterSource.Text;
 end;
 
 end.

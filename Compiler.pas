@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
-  VarDeclaration, PascalUnit, ProcDeclaration;
+  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock;
 
 type
   TCompiler = class
@@ -12,6 +12,7 @@ type
     FLexer: TLexer;
     FUnits: TObjectList<TPascalUnit>;
     FCurrentUnit: TPascalUnit;
+    FCurrentProc: TProcDeclaration;
     procedure CompileUnit();
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TDataPrimitive = dpInteger);
     procedure RegisterBasicTypes();
@@ -24,10 +25,12 @@ type
     procedure ParseUnitFooter();
     procedure ParseUses(AScope: TObjectList<TCodeElement>);
     procedure ParseVars(AScope: TObjectList<TCodeElement>);
-    procedure ParseVarDeclaration(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True);
+    procedure ParseVarDeclaration(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True;
+      AAsParameter: Boolean = False; AAsLocal: Boolean = False);
     procedure ParseConsts(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineParameters(AScope: TObjectList<TCodeElement>);
+    procedure ParseRoutineLocals(AProc: TProcDeclaration);
     procedure ParseRoutineContent(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True);
     procedure ParseAssignment(AScope: TObjectList<TCodeElement>);
@@ -38,6 +41,7 @@ type
     procedure ParseExpression(AScope: TObjectList<TCodeElement>);
     procedure ParseTerm(AScope: TObjectList<TCodeElement>);
     procedure ParseFactor(AScope: TObjectList<TCodeElement>);
+    procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
   public
     constructor Create();
@@ -116,6 +120,11 @@ begin
         break;
     end;
   end;
+  if FLexer.PeekToken.IsContent('begin') then
+  begin
+    FLexer.GetToken();
+    ParseRoutineContent(LUnit.InitSection);
+  end;
   ParseUnitFooter();
   FCurrentUnit := LLastUnit;
 end;
@@ -175,6 +184,14 @@ var
   LElement: TCodeElement;
 begin
   Result := nil;
+  if Assigned(FCurrentProc) then
+  begin
+    Result := TVarDeclaration(FCurrentProc.GetElement(AName, AType));
+    if Assigned(Result) then
+    begin
+      Exit;
+    end;
+  end;
   for LUnit in FUnits do
   begin
     LElement := LUnit.GetElement(AName, AType);
@@ -195,6 +212,31 @@ begin
   end;
 end;
 
+procedure TCompiler.ParseASMBlock(AScope: TObjectList<TCodeElement>);
+var
+  LToken: TToken;
+  LBlock: TASMBlock;
+begin
+  LBlock := TASMBlock.Create('');
+  AScope.Add(LBlock);
+  FLexer.GetToken('asm');
+  while not (FLexer.PeekToken.IsContent('end') and FLexer.AHeadToken.IsContent(';')) do
+  begin
+    LToken := FLexer.GetToken();
+    LBlock.Source := LBlock.Source + LToken.Content;
+    if LToken.IsType(ttIdentifier) then
+    begin
+      LBlock.Source := LBlock.Source + ' ';
+    end;
+    if LToken.FollowedByNewLine then
+    begin
+      LBlock.Source := LBlock.Source + sLineBreak;
+    end;
+  end;
+  FLexer.GetToken('end');
+  FLexer.GetToken(';');
+end;
+
 procedure TCompiler.ParseAssignment(AScope: TObjectList<TCodeElement>);
 var
   LAssignment: TAssignment;
@@ -202,6 +244,11 @@ begin
   LAssignment := TAssignment.Create('');
   LAssignment.TargetVar := GetVar(FLexer.GetToken('', ttIdentifier).Content);
   AScope.Add(LAssignment);
+  if FLexer.PeekToken.IsContent('^') then
+  begin
+    LAssignment.Dereference := True;
+    FLexer.GetToken();
+  end;
   FLexer.GetToken(':=');
   ParseRelation(LAssignment.SubElements);
   FLexer.GetToken(';');
@@ -252,6 +299,7 @@ procedure TCompiler.ParseFactor(AScope: TObjectList<TCodeElement>);
 var
   LFactor: TFactor;
   LInverse: Boolean;
+  LTempID, LContent, LData: string;
 begin
   LInverse := False;
   while FLexer.PeekToken.IsContent('not') do
@@ -282,12 +330,32 @@ begin
       end
       else
       begin
-        if FLexer.PeekToken.IsContent('@') then
+        if FLexer.PeekToken.IsType(ttCharLiteral) then
         begin
-          FLexer.GetToken('@');
-          LFactor.GetAdress := True;
+          LTempID := FCurrentUnit.GetUniqueID('str');
+          LFactor.Value := LTempID;
+          LContent := FLexer.GetToken().Content;
+          LData := ':' + LTempID + ' dat "' + LContent + '"';
+          if Length(LContent) > 1 then
+          begin
+            LData := LData + ', 0x0';
+          end;
+          FCurrentUnit.FooterSource.Add(LData);
+        end
+        else
+        begin
+          if FLexer.PeekToken.IsContent('@') then
+          begin
+            FLexer.GetToken('@');
+            LFactor.GetAdress := True;
+          end;
+          LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
         end;
-        LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+      end;
+      if FLexer.PeekToken.IsContent('^') then
+      begin
+        FLexer.GetToken();
+        LFactor.Dereference := True;
       end;
     end;
   end;
@@ -352,9 +420,9 @@ begin
   while not FLexer.PeekToken.IsContent('end') do
   begin
     case FLexer.PeekToken.TokenType of
-      ttIdentifier:
+      ttIdentifier, ttReserved:
       begin
-        case AnsiIndexText(FLexer.PeekToken.Content, ['if', 'while', 'repeat']) of
+        case AnsiIndexText(FLexer.PeekToken.Content, ['if', 'while', 'repeat', 'asm']) of
           0:
           begin
             ParseCondition(AScope);
@@ -367,6 +435,11 @@ begin
           begin
             ParseRepeatLoop(AScope);
           end;
+          3:
+          begin
+            ParseASMBlock(AScope);
+          end
+
           else
             LElement := ExpectElement(FLexer.PeekToken.Content, TCodeElement);
             if LElement is TVarDeclaration then
@@ -389,19 +462,63 @@ end;
 procedure TCompiler.ParseRoutineDeclaration;
 var
   LProc: TProcDeclaration;
+  LIsFunction: Boolean;
 begin
-  FLexer.GetToken('procedure');
+  if FLexer.PeekToken.IsContent('function') then
+  begin
+    LIsFunction := True;
+    FLexer.GetToken('function');
+  end
+  else
+  begin
+    LIsFunction := False;
+    FLexer.GetToken('procedure');
+  end;
   LProc := TProcDeclaration.Create(FLexer.GetToken('', ttIdentifier).Content);
+  FCurrentProc := LProc;
   AScope.Add(LProc);
   ParseRoutineParameters(LProc.Parameters);
+  if LIsFunction then
+  begin
+    FLexer.GetToken(':');
+    LProc.ResultType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
+    LProc.AddResultValue();
+  end;
   FLexer.GetToken(';');
-  if FLexer.PeekToken.IsContent('begin') then
+  if FLexer.PeekToken.IsContent('var') then
+  begin
+    ParseRoutineLocals(LProc);
+  end;
+  if FLexer.PeekToken.IsContent('asm') then
+  begin
+    ParseASMBlock(LProc.SubElements);
+  end
+  else
   begin
     FLexer.GetToken('begin');
     ParseRoutineContent(LProc.SubElements);
+    FLexer.GetToken('end');
+    FLexer.GetToken(';');
   end;
-  FLexer.GetToken('end');
-  FLexer.GetToken(';');
+  FCurrentProc := nil;
+end;
+
+procedure TCompiler.ParseRoutineLocals(AProc: TProcDeclaration);
+var
+  LScope: TObjectList<TCodeElement>;
+  LElement: TCodeElement;
+begin
+  LScope := TObjectList<TCodeElement>.Create(False);
+  FLexer.GetToken('var');
+  while not FLexer.PeekToken.IsType(ttReserved) do
+  begin
+    ParseVarDeclaration(LScope, True, False, True);
+  end;
+  for LElement in LScope do
+  begin
+    AProc.AddLocal(TVarDeclaration(LElement));
+  end;
+  LScope.Free;
 end;
 
 procedure TCompiler.ParseRoutineParameters(AScope: TObjectList<TCodeElement>);
@@ -409,7 +526,7 @@ begin
   FLexer.GetToken('(');
   while not FLexer.PeekToken.IsContent(')') do
   begin
-    ParseVarDeclaration(AScope, False);
+    ParseVarDeclaration(AScope, False, True);
     if not FLexer.PeekToken.IsContent(')') then
     begin
       FLexer.GetToken(';');
@@ -453,12 +570,15 @@ end;
 procedure TCompiler.ParseVarDeclaration;
 var
   LNames: TStringList;
-  LName: string;
+  LName, LDef: string;
   LRepeat: Boolean;
   LType: TDataType;
+  LIndex: Integer;
+  LVarDec: TVarDeclaration;
 begin
   LNames := TStringList.Create();
   LRepeat := False;
+  LDef := '0x0';
   while (not FLexer.PeekToken.IsContent(':')) or LRepeat do
   begin
     LNames.Add(FLexer.GetToken('', ttIdentifier).Content);
@@ -471,14 +591,43 @@ begin
   end;
   FLexer.GetToken(':');
   LType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
+  if AIncludeEndMark and (not (AAsParameter or AAsLocal)) and (FLexer.PeekToken.IsContent('=')) then
+  begin
+    FLexer.GetToken();
+    LDef := FLexer.GetToken('', ttNumber).Content;
+  end;
   if AIncludeEndMark then
   begin
     FLexer.GetToken(';');
   end;
+  if AAsParameter then
+  begin
+    LIndex := 1;
+  end;
+  if AAsLocal then
+  begin
+    LIndex := -1;
+  end;
   for LName in LNames do
   begin
-    //RegisterVar(LName, LType);
-    AScope.Add(TVarDeclaration.Create(LName, LType));
+    LVarDec := TVarDeclaration.Create(LName, LType);
+    LVarDec.DefaultValue := LDef;
+    if AAsParameter or AAsLocal then
+    begin
+      LVarDec.ParamIndex := LIndex;
+      if AAsParameter then
+      begin
+        Inc(LIndex);
+      end
+      else
+      begin
+        if AAsLocal then
+        begin
+          Dec(LIndex);
+        end;
+      end;
+    end;
+    AScope.Add(LVarDec);
   end;
   LNames.Free;
 end;

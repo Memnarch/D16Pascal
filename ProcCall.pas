@@ -41,9 +41,22 @@ function TProcCall.GetDCPUSource: string;
 var
   LElement: TCodeElement;
   LRelSource: string;
-  i: Integer;
+  i, LMax: Integer;
+  LRegisters: string;
 begin
   Result := '';
+  LRegisters := 'abc';
+  LMax := FParameters.Count;
+  if LMax > 3 then
+  begin
+    LMax := 3;
+  end;
+
+  for i := 1 to LMax do
+  begin
+    Result := Result + 'set push, ' + LRegisters[i] + sLineBreak;
+  end;
+
   for i := FParameters.Count - 1 downto 0 do
   begin
     LRelSource := FParameters.Items[i].GetDCPUSource();
@@ -67,6 +80,18 @@ begin
   if FParameters.Count-3 > 0 then
   begin
     Result := Result + 'add sp, ' + IntToStr(FParameters.Count-3) + sLineBreak;
+  end;
+  if ProcDeclaration.IsFunction then
+  begin
+    Result := Result + 'set x, a' + sLineBreak;
+  end;
+  for i := 1 to LMax do
+  begin
+    Result := Result + 'set ' + LRegisters[i] + ', pop' + sLineBreak;;
+  end;
+  if ProcDeclaration.IsFunction then
+  begin
+    Result := Result + 'set push, x' + sLineBreak;
   end;
 
 end;

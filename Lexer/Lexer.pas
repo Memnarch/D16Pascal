@@ -22,6 +22,7 @@ type
     procedure NextChar();
     procedure NewToken(AContent: string; AType: TTokenType);
     procedure InitReserved();
+    procedure InsertLineBreak();
     function GetChar(): Char;
     function IsNextChar(AChar: Char): Boolean;
     function GetEOF: Boolean;
@@ -101,6 +102,14 @@ begin
   FReserved.Add('procedure');
 end;
 
+procedure TLexer.InsertLineBreak;
+begin
+  if FTokens.Count > 0 then
+  begin
+    FTokens.Items[FTokens.Count-1].FollowedByNewLine := True;
+  end;
+end;
+
 function TLexer.IsNextChar(AChar: Char): Boolean;
 begin
   Result := ((FPos+1) <= Length(FSource)) and (AChar = FSource[FPos+1]);
@@ -148,6 +157,7 @@ begin
     LContent := LContent + GetChar();
     NextChar();
   end;
+  NewToken(LContent, ttCharLiteral);
   NextChar();
 end;
 
@@ -191,7 +201,7 @@ end;
 
 procedure TLexer.ParseNumber;
 var
-  LHasDot: Boolean;
+  LHasDot, LIsHexa: Boolean;
   LContent: string;
   LChar: Char;
 begin
@@ -199,17 +209,28 @@ begin
   LContent := GetChar();
   NextChar();
   LChar := GetChar();
-  while CharInSet(LChar, ['0'..'9','.']) do
+  while (CharInSet(LChar, ['0'..'9','.'])) or (LIsHexa and CharInSet(LChar, ['0'..'9','x', 'X', 'a'..'f', 'A'..'F'])) do
   begin
     if LChar = '.' then
     begin
-      if LHasDot then
+      if LHasDot or LIsHexa then
       begin
         Break;
       end
       else
       begin
         LHasDot := true;
+      end;
+    end;
+    if (SameText(LChar, 'x')) then
+    begin
+      if LContent = '0' then
+      begin
+        LIsHexa := True;
+      end
+      else
+      begin
+        Break;
       end;
     end;
     LContent := LContent + LChar;
@@ -230,7 +251,7 @@ begin
     NewToken(LChar, ttTermOp);
     NextChar();
   end;
-  if CharInSet(LChar, ['*', '/', '@']) then
+  if CharInSet(LChar, ['*', '/', '@', '^']) then
   begin
     NewToken(LChar, ttFacOp);
     NextChar();
@@ -274,7 +295,7 @@ begin
         ParseCharLiteral();
       end;
 
-      '+', '-', '*', '/', '=', '<', '>', '@':
+      '+', '-', '*', '/', '=', '<', '>', '@', '^':
       begin
         ParseOperator();
       end;
@@ -309,6 +330,7 @@ begin
         begin
           NextChar();
           Inc(FLine);
+          InsertLineBreak();
         end;
       end;
 

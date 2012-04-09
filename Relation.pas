@@ -33,15 +33,15 @@ begin
     Result := Result + SubElements.Items[i].GetDCPUSource();
     if i > 0 then
     begin
-      LTrue := '1';
+      LTrue := '0xffff';
       LFalse := '0';
       if (i = SubElements.Count - 1) and Inverse then
       begin
         LTrue := '0';
-        LFalse := '1';
+        LFalse := '0xffff';
       end;
-      Result := Result + 'set y, pop' + sLineBreak;
       Result := Result + 'set z, pop' + sLineBreak;
+      Result := Result + 'set y, pop' + sLineBreak;
       Result := Result + 'set x, ' + LFalse + sLineBreak;
       LOpStr := Operators.Strings[i-1];
       case AnsiIndexText(LOpStr, ['>', '<', '>=', '<=', '=', '<>']) of

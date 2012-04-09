@@ -12,6 +12,7 @@ type
     FValue: string;
     FGetAdress: Boolean;
     FInverse: Boolean;
+    FDereference: Boolean;
   public
     function IsConstant(): Boolean;
     function GetDCPUSource(): string; override;
@@ -19,34 +20,58 @@ type
     property Value: string read FValue write FValue;
     property GetAdress: Boolean read FGetAdress write FGetAdress;
     property Inverse: Boolean read FInverse write FInverse;
+    property Dereference: Boolean read FDereference write FDereference;
   end;
 
 implementation
 
+uses
+  StrUtils;
+
 { TFactor }
 
 function TFactor.GetDCPUSource: string;
+var
+  LValToPush: string;
 begin
+  Result := '';
   if IsConstant then
   begin
-    Result := 'set push, ' + FValue + sLineBreak;
+    LValToPush := FValue;
+    //Result := 'set push, ' + FValue + sLineBreak;
   end
   else
   begin
-    if FGetAdress then
+    if FGetAdress or ((FVarDeclaration.ParamIndex > 0) and (FVarDeclaration.ParamIndex <= 3)) then
     begin
-      Result := 'set push, ' + FVarDeclaration.Name + sLineBreak;
+      LValToPush := FVarDeclaration.GetAccessIdentifier();
+      //Result := 'set push, ' +  + sLineBreak;
     end
     else
     begin
-      Result := 'set push, [' + FVarDeclaration.Name + ']' + sLineBreak;
+      //Result := 'set push, [' + FVarDeclaration.GetAccessIdentifier() + ']' + sLineBreak;
+      LValToPush := '[' + FVarDeclaration.GetAccessIdentifier() + ']';
     end;
-    if Inverse then
+  end;
+  if Dereference then
+  begin
+    if not (LValToPush[1] = '[') then
     begin
-      Result := Result + 'set x, pop' + sLineBreak;
-      Result := Result + 'xor x, 0xffff' + sLineBreak;
-      Result := Result + 'set push, x' + sLineBreak;
+      LValToPush := '[' + LValToPush + ']';
     end;
+    Result := Result + 'set x, ' + LValToPush + sLineBreak;
+    if AnsiIndexText(LValToPush, ['[a]', '[b]', '[c]']) = -1 then
+    begin
+      Result := Result + 'set x, [x]' + sLineBreak;
+    end;
+    LValToPush := 'x';
+  end;
+  Result := Result + 'set push, ' + LValToPush + sLineBreak;
+  if Inverse then
+  begin
+    Result := Result + 'set x, pop' + sLineBreak;
+    Result := Result + 'xor x, 0xffff' + sLineBreak;
+    Result := Result + 'set push, x' + sLineBreak;
   end;
 end;
 

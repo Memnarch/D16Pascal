@@ -70,6 +70,7 @@
 			<DCCReference Include="Condition.pas"/>
 			<DCCReference Include="Loops.pas"/>
 			<DCCReference Include="ProcCall.pas"/>
+			<DCCReference Include="ASMBlock.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

@@ -59,13 +59,13 @@ begin
         begin
           if not SameText(LTargetB, LSourceA) then
           begin
-            ALines.Strings[m] := 'set ' + LTargetB + ', ' + LSourceA;
+            ALines.Strings[k+LCount] := 'set ' + LTargetB + ', ' + LSourceA;
           end
           else
           begin
-            ALines.Strings[m] := '';
+            ALines.Strings[k+LCount] := '';
           end;
-          ALines.Strings[k+LCount] := '';
+          ALines.Strings[m] := '';
         end
         else
         begin

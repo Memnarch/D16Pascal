@@ -20,7 +20,8 @@ uses
   Optimizer in 'Optimizer.pas',
   Condition in 'Condition.pas',
   Loops in 'Loops.pas',
-  ProcCall in 'ProcCall.pas';
+  ProcCall in 'ProcCall.pas',
+  ASMBlock in 'ASMBlock.pas';
 
 {$R *.res}
 

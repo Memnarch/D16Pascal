@@ -14,6 +14,7 @@ type
   private
     FTokenType: TTokenType;
     FContent: string;
+    FFollowedByNewLine: Boolean;
   public
     constructor Create(AContent: string; AType: TTokenType);
     function IsContent(AContent: string): Boolean;
@@ -23,6 +24,7 @@ type
     procedure MatchType(AType: TTokenType);
     property Content: string read FContent;
     property TokenType: TTokenType read FTokenType;
+    property FollowedByNewLine: Boolean read FFollowedByNewLine write FFollowedByNewLine;
   end;
 
   function GetTokenName(AType: TTokenType): string;

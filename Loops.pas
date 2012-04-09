@@ -63,9 +63,10 @@ begin
   Result := Result + 'ife x, 0' + sLineBreak;
   Result := Result + 'set pc, ' + LEnd + sLineBreak;
   Result := OptimizeDCPUCode(Result);
+  //inherited;
   Result := Result + inherited;
   Result := Result + 'set pc, ' + LWhile + sLineBreak;
-  Result := Result + ':' + LEnd;
+  Result := Result + ':' + LEnd + sLineBreak;
 end;
 
 { TRepeatLoop }
