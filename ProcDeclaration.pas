@@ -70,24 +70,30 @@ end;
 function TProcDeclaration.GetDCPUSource: string;
 begin
   Result := ':' + Name + sLineBreak;
-  Result := Result + 'set push, j' + sLineBreak;
-  if FLocals.Count > 0 then
+  if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
-    Result := Result + 'sub sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+    Result := Result + 'set push, j' + sLineBreak;
+    if FLocals.Count > 0 then
+    begin
+      Result := Result + 'sub sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+    end;
+    Result := Result + 'set j, sp' + sLineBreak;
   end;
-  Result := Result + 'set j, sp' + sLineBreak;
   Result := Result + inherited GetDCPUSource();
   if IsFunction then
   begin
     Result := Result + 'set a, [' +
       TVarDeclaration(GetElement('Result', TVarDeclaration)).GetAccessIdentifier() + ']' + sLineBreak;
   end;
-  Result := Result + 'set sp, j' + sLineBreak;
-  if FLocals.Count > 0 then
+  if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
-    Result := Result + 'add sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+    Result := Result + 'set sp, j' + sLineBreak;
+    if FLocals.Count > 0 then
+    begin
+      Result := Result + 'add sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+    end;
+    Result := Result + 'set j, pop' + sLineBreak;
   end;
-  Result := Result + 'set j, pop' + sLineBreak;
   Result := Result + 'set pc, pop' + sLineBreak;
 end;
 

@@ -7,13 +7,18 @@ uses
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock;
 
 type
+  TMessageLevel = (mlNone, mlWarning, mlError, mlFatal);
+  TOnMessage = procedure(AMessage, AUnitName: string; ALine: Integer; ALevel: TMessageLevel) of object;
+
   TCompiler = class
   private
     FLexer: TLexer;
     FUnits: TObjectList<TPascalUnit>;
     FCurrentUnit: TPascalUnit;
     FCurrentProc: TProcDeclaration;
-    procedure CompileUnit();
+    FSearchPath: TStringlist;
+    FOnMessage: TOnMessage;
+    procedure CompileUnit(AUnit: TPascalUnit);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TDataPrimitive = dpInteger);
     procedure RegisterBasicTypes();
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
@@ -43,12 +48,16 @@ type
     procedure ParseFactor(AScope: TObjectList<TCodeElement>);
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
+    procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
+    function GetPathForFile(AFile: string): string;
   public
     constructor Create();
     destructor Destroy(); reintroduce;
     function GetDCPUSource(): string;
     procedure CompileFile(AFile: string);
     procedure CompilerSource(ASource: string);
+    property SearchPath: TStringlist read FSearchPath write FSearchPath;
+    property OnMessage: TOnMessage read FOnMessage write FOnMessage;
   end;
 
 const
@@ -68,78 +77,104 @@ uses
 { TCompiler }
 
 procedure TCompiler.CompileFile(AFile: string);
+var
+  LUnit: TPascalUnit;
 begin
-  FLexer.LoadFromFile(AFile);
-  CompileUnit();
+  DoMessage('Compiling ' + QuotedStr(AFile), '', 0, mlNone);
+  LUnit := TPascalUnit.Create('');
+  LUnit.Lexer.LoadFromFile(GetPathForFile(AFile));
+  CompileUnit(LUnit);
 end;
 
 procedure TCompiler.CompilerSource(ASource: string);
+var
+  LUnit: TPascalUnit;
 begin
-  FLexer.LoadFromString(ASource);
-  CompileUnit();
+  LUnit := TPascalUnit.Create('');
+  LUnit.Lexer.LoadFromString(ASource);
+  CompileUnit(LUnit);
 end;
 
 procedure TCompiler.CompileUnit;
 var
-  LUnit: TPascalUnit;
   LLastUnit: TPascalUnit;
+  LLastLexer: TLexer;
 begin
-  LUnit := TPascalUnit.Create('');
   LLastUnit := FCurrentUnit;
-  FUnits.Add(LUnit);
-  FCurrentUnit := LUnit;
+  LLastLexer := FLexer;
+  FUnits.Add(AUnit);
+  FCurrentUnit := AUnit;
+  FLexer := AUnit.Lexer;
   if FUnits.Count = 1 then
   begin
     RegisterBasicTypes();
   end;
-  ParseUnitHeader(LUnit);
-  while True do
-  begin
-    case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function']) of
-      0:
+  try
+    try
+      ParseUnitHeader(AUnit);
+      while True do
       begin
-        ParseUses(LUnit.SubElements);
-      end;
+        case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function']) of
+          0:
+          begin
+            ParseUses(AUnit.SubElements);
+          end;
 
-      1:
+          1:
+          begin
+            ParseVars(AUnit.SubElements);
+          end;
+
+          2:
+          begin
+            ParseConsts(AUnit.SubElements);
+          end;
+
+          3, 4:
+          begin
+            ParseRoutineDeclaration(AUnit.SubElements);
+          end;
+
+          else
+            break;
+        end;
+      end;
+      if FLexer.PeekToken.IsContent('begin') then
       begin
-        ParseVars(LUnit.SubElements);
+        FLexer.GetToken();
+        ParseRoutineContent(AUnit.InitSection);
       end;
-
-      2:
-      begin
-        ParseConsts(LUnit.SubElements);
-      end;
-
-      3, 4:
-      begin
-        ParseRoutineDeclaration(LUnit.SubElements);
-      end;
-
-      else
-        break;
+      ParseUnitFooter();
+    except
+      on E: Exception do
+      DoMessage(E.Message, AUnit.Name, AUnit.Lexer.PeekToken.FoundInLine, mlFatal);
     end;
+  finally
+    FCurrentUnit := LLastUnit;
+    FLexer := LLastLexer;
   end;
-  if FLexer.PeekToken.IsContent('begin') then
-  begin
-    FLexer.GetToken();
-    ParseRoutineContent(LUnit.InitSection);
-  end;
-  ParseUnitFooter();
-  FCurrentUnit := LLastUnit;
 end;
 
 constructor TCompiler.Create;
 begin
-  FLexer := TLexer.Create();
   FUnits := TObjectList<TPascalUnit>.Create();
+  FSearchPath := TStringList.Create();
 end;
 
 destructor TCompiler.Destroy;
 begin
-  FLexer.Free;
   FUnits.Free;
+  FSearchPath.Free;
   inherited;
+end;
+
+procedure TCompiler.DoMessage(AMessage, AUnit: string; ALine: Integer;
+  ALevel: TMessageLevel);
+begin
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(AMessage, AUnit, ALine, ALevel);
+  end;
 end;
 
 function TCompiler.ExpectElement(AName: string;
@@ -198,6 +233,25 @@ begin
     if Assigned(LElement) then
     begin
       Result := LElement;
+      Break;
+    end;
+  end;
+end;
+
+function TCompiler.GetPathForFile(AFile: string): string;
+var
+  LPath: string;
+begin
+  Result := AFile;
+  if FileExists(AFile) then
+  begin
+    Exit;
+  end;
+  for LPath in FSearchPath do
+  begin
+    if FileExists(LPath + '\' + AFile) then
+    begin
+      Result := LPath + '\' + AFile;
       Break;
     end;
   end;
@@ -566,13 +620,20 @@ end;
 procedure TCompiler.ParseUnitHeader;
 begin
   FLexer.GetToken.MatchContent('unit');
-  FLexer.GetToken.MatchType(ttIdentifier);
+  AUnit.Name := FLexer.GetToken('', ttIdentifier).Content;
   FLexer.GetToken.MatchContent(';');
 end;
 
 procedure TCompiler.ParseUses;
 begin
-
+  FLexer.GetToken('uses');
+  CompileFile(FLexer.GetToken('', ttIdentifier).Content + '.pas');
+  while not FLexer.PeekToken.IsContent(';') do
+  begin
+    FLexer.GetToken(',');
+    CompileFile(FLexer.GetToken('', ttIdentifier).Content + '.pas');
+  end;
+  FLexer.GetToken(';');
 end;
 
 procedure TCompiler.ParseVarDeclaration;

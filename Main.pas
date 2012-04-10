@@ -5,21 +5,22 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SynEdit, SynHighlighterAsm, SynEditHighlighter,
-  SynHighlighterPas;
+  SynHighlighterPas, ComCtrls, ToolWin, Compiler, ImgList;
 
 type
   TForm2 = class(TForm)
-    btnCompile: TButton;
-    Source: TSynEdit;
-    Target: TSynEdit;
-    SynPasSyn1: TSynPasSyn;
-    SynAsmSyn1: TSynAsmSyn;
+    Log: TSynEdit;
+    ToolBar1: TToolBar;
+    ToolButton1: TToolButton;
+    FileOpenDialog: TFileOpenDialog;
+    ToolImages: TImageList;
     procedure btnCompileClick(Sender: TObject);
   private
     { Private declarations }
+    procedure OnMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
   public
     { Public declarations }
-    procedure RefreshTargetIdent();
+    procedure RefreshTargetIdent(ALines: TStrings);
   end;
 
 var
@@ -27,20 +28,46 @@ var
 
 implementation
 
-uses
-  Compiler;
-
 {$R *.dfm}
 
 procedure TForm2.btnCompileClick(Sender: TObject);
 var
   LCompiler: TCompiler;
+  LMainPath: string;
+  LFile: string;
+  LOut: TStringList;
 begin
+  if not FileOpenDialog.Execute then
+  begin
+    Exit;
+  end;
+  Log.Clear;
   LCompiler := TCompiler.Create();
-  LCompiler.CompilerSource(Source.Text);
-  Target.Text := Trim(LCompiler.GetDCPUSource());
+  LCompiler.OnMessage := OnMessage;
+  LOut := TStringList.Create();
+  LMainPath := ExtractFilePath(FileOpenDialog.FileName);
+  LFile := ExtractFileName(FileOpenDialog.FileName);
+  LCompiler.SearchPath.Add(LMainPath);
+  LCompiler.CompileFile(LFile);
+  LOut.Text := Trim(LCompiler.GetDCPUSource());
+  RefreshTargetIdent(LOut);
+  LOut.SaveToFile(LMainPath + '\' + ChangeFileExt(LFile, '.asm'));
   LCompiler.Free;
-  RefreshTargetIdent();
+  LOut.Free;
+  Log.Lines.Add('finished');
+end;
+
+procedure TForm2.OnMessage(AMessage, AUnit: string; ALine: Integer;
+  ALevel: TMessageLevel);
+begin
+  if ALevel = mlNone then
+  begin
+    Log.Lines.Add(AMessage);
+  end
+  else
+  begin
+    Log.Lines.Add('Error in ' + QuotedStr(AUnit) + ' line ' + IntToStr(ALine) + ': ' + AMessage);
+  end;
 end;
 
 procedure TForm2.RefreshTargetIdent;
@@ -49,11 +76,11 @@ var
   LSpace: string;
 begin
   LSpace := '               ';
-  for i := 0 to Target.Lines.Count - 1 do
+  for i := 0 to ALines.Count - 1 do
   begin
-    if Target.Lines.Strings[i][1] <> ':' then
+    if ALines.Strings[i][1] <> ':' then
     begin
-      Target.Lines.Strings[i] := LSpace + Target.Lines.Strings[i];
+      ALines.Strings[i] := LSpace + ALines.Strings[i];
     end;
   end;
 end;

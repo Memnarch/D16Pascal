@@ -3,19 +3,21 @@ unit PascalUnit;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement;
+  Classes, Types, Generics.Collections, CodeElement, Lexer;
 
 type
   TPascalUnit = class(TCodeElement)
   private
     FFooterSource: TStringList;
     FInitSection: TObjectList<TCodeElement>;
+    FLexer: TLexer;
   public
     constructor Create(AName: string); reintroduce;
     destructor Destroy(); override;
     function GetDCPUSource(): string; override;
     property FooterSource: TStringList read FFooterSource;
     property InitSection: TObjectList<TCodeElement> read FInitSection;
+    property Lexer: TLexer read FLexer;
   end;
 
 implementation
@@ -30,12 +32,14 @@ begin
   inherited;
   FFooterSource := TStringList.Create();
   FInitSection := TObjectList<TCodeElement>.Create();
+  FLexer := TLexer.Create();
 end;
 
 destructor TPascalUnit.Destroy;
 begin
   FFooterSource.Free;
   FinitSection.Free;
+  FLexer.Free;
   inherited;
 end;
 

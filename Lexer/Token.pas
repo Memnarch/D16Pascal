@@ -15,6 +15,7 @@ type
     FTokenType: TTokenType;
     FContent: string;
     FFollowedByNewLine: Boolean;
+    FFoundInLine: Integer;
   public
     constructor Create(AContent: string; AType: TTokenType);
     function IsContent(AContent: string): Boolean;
@@ -25,6 +26,7 @@ type
     property Content: string read FContent;
     property TokenType: TTokenType read FTokenType;
     property FollowedByNewLine: Boolean read FFollowedByNewLine write FFollowedByNewLine;
+    property FoundInLine: Integer read FFoundInLine write FFoundInLine;
   end;
 
   function GetTokenName(AType: TTokenType): string;
@@ -48,6 +50,7 @@ constructor TToken.Create(AContent: string; AType: TTokenType);
 begin
   FContent := AContent;
   FTokenType := AType;
+  FFoundInLine := -1;
 end;
 
 function TToken.IsContent(AContent: string): Boolean;

@@ -137,8 +137,12 @@ begin
 end;
 
 procedure TLexer.NewToken(AContent: string; AType: TTokenType);
+var
+  LToken: TToken;
 begin
-  FTokens.Add(TToken.Create(AContent, AType));
+  LToken := TToken.Create(AContent, AType);
+  LToken.FoundInLine := FLine;
+  FTokens.Add(LToken);
 end;
 
 procedure TLexer.NextChar;
