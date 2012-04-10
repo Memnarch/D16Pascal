@@ -28,10 +28,10 @@ var
 begin
   Result := '';
   Result := Result + SubElements.Items[0].GetDCPUSource();
-  Result := Result + 'set x, pop' + sLineBreak;
   if Dereference then
   begin
     Result := Result + 'set y, [' + FTargetVar.GetAccessIdentifier() + ']' + sLineBreak;
+    Result := Result + 'set x, pop' + sLineBreak;
     Result := Result + 'set [y], x' + sLineBreak;
   end
   else
@@ -39,10 +39,12 @@ begin
     LAccess := FTargetVar.GetAccessIdentifier;
     if AnsiIndexText(LAccess, ['a', 'b', 'c']) >= 0 then
     begin
+      Result := Result + 'set x, pop' + sLineBreak;
       Result := Result + 'set ' + LAccess + ', x' + sLineBreak;
     end
     else
     begin
+      Result := Result + 'set x, pop' + sLineBreak;
       Result := Result + 'set [' + LAccess + '], x' + sLineBreak;
     end;
   end;

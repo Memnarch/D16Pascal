@@ -30,8 +30,8 @@ begin
     Result := Result + SubElements.Items[i].GetDCPUSource();
     if i > 0 then
     begin
-      Result := Result + 'set x, pop' + sLineBreak;
       Result := Result + 'set y, pop' + sLineBreak;
+      Result := Result + 'set x, pop' + sLineBreak;
       case Operators.Strings[i-1][1] of
         '+':
         begin

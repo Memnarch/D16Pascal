@@ -63,7 +63,7 @@ const
 implementation
 
 uses
-  StrUtils, Relation, Expression, Term, Factor, Assignment, Condition, Loops, ProcCall;
+  StrUtils, Relation, Expression, Term, Factor, Assignment, Condition, Loops, ProcCall, Optimizer;
 
 { TCompiler }
 
