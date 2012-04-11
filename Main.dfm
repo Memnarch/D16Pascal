@@ -2,7 +2,7 @@ object Form2: TForm2
   Left = 0
   Top = 0
   Caption = 'D16-Pascal Compiler by Memnarch'
-  ClientHeight = 237
+  ClientHeight = 220
   ClientWidth = 506
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -15,9 +15,9 @@ object Form2: TForm2
   TextHeight = 13
   object Log: TSynEdit
     Left = 0
-    Top = 44
+    Top = 73
     Width = 506
-    Height = 193
+    Height = 147
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -30,14 +30,12 @@ object Form2: TForm2
     Gutter.Font.Height = -11
     Gutter.Font.Name = 'Courier New'
     Gutter.Font.Style = []
-    Gutter.ShowLineNumbers = True
     Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoNoCaret, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoTabsToSpaces]
     ReadOnly = True
     TabWidth = 2
     WantTabs = True
-    ExplicitTop = 38
-    ExplicitWidth = 905
-    ExplicitHeight = 605
+    ExplicitTop = 44
+    ExplicitHeight = 193
   end
   object ToolBar1: TToolBar
     AlignWithMargins = True
@@ -51,26 +49,31 @@ object Form2: TForm2
     Caption = 'ToolBar1'
     Images = ToolImages
     TabOrder = 1
-    object ToolButton1: TToolButton
+    object btnCompile: TToolButton
       Left = 0
       Top = 0
-      Caption = 'ToolButton1'
       ImageIndex = 0
       OnClick = btnCompileClick
     end
   end
-  object FileOpenDialog: TFileOpenDialog
-    DefaultExtension = '.pas'
-    FavoriteLinks = <>
-    FileTypes = <
-      item
-        DisplayName = 'Unit(*.pas)'
-        FileMask = '*.pas'
-      end>
-    Options = []
-    Title = 'Choose Unit'
-    Left = 224
-    Top = 72
+  object Panel1: TPanel
+    Left = 0
+    Top = 44
+    Width = 506
+    Height = 29
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 2
+    object cbOptimize: TCheckBox
+      Left = 3
+      Top = 3
+      Width = 97
+      Height = 17
+      Caption = 'Optimize'
+      Checked = True
+      State = cbChecked
+      TabOrder = 0
+    end
   end
   object ToolImages: TImageList
     Height = 32
@@ -78,7 +81,7 @@ object Form2: TForm2
     Left = 248
     Top = 120
     Bitmap = {
-      494C010101000800200020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010101000800280020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -612,5 +615,9 @@ object Form2: TForm2
       FFE007FF000000000000000000000000FFFFFFFF000000000000000000000000
       FFFFFFFF00000000000000000000000000000000000000000000000000000000
       000000000000}
+  end
+  object OpenDialog: TOpenDialog
+    Left = 296
+    Top = 80
   end
 end

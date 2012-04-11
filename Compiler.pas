@@ -389,7 +389,7 @@ begin
           LTempID := FCurrentUnit.GetUniqueID('str');
           LFactor.Value := LTempID;
           LContent := FLexer.GetToken().Content;
-          LData := ':' + LTempID + ' dat "' + LContent + '"';
+          LData := ':' + LTempID + ' dat "' + StringReplace(LContent,'\n', '",10,"',[]) + '"';
           if Length(LContent) > 1 then
           begin
             LData := LData + ', 0x0';
@@ -663,7 +663,14 @@ begin
   if AIncludeEndMark and (not (AAsParameter or AAsLocal)) and (FLexer.PeekToken.IsContent('=')) then
   begin
     FLexer.GetToken();
-    LDef := FLexer.GetToken('', ttNumber).Content;
+    if FLexer.PeekToken.IsType(ttCharLiteral) then
+    begin
+      LDef := '"' + StringReplace(FLexer.GetToken('', ttCharLiteral).Content, '\n', '",10,"', [rfReplaceAll, rfIgnoreCase]) + '",0x0';
+    end
+    else
+    begin
+      LDef := FLexer.GetToken('', ttNumber).Content;
+    end;
   end;
   if AIncludeEndMark then
   begin

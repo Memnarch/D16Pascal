@@ -43,7 +43,8 @@ begin
   end
   else
   begin
-    if FGetAdress or ((FVarDeclaration.ParamIndex > 0) and (FVarDeclaration.ParamIndex <= 3)) then
+    if FGetAdress or ((FVarDeclaration.ParamIndex > 0) and (FVarDeclaration.ParamIndex <= 3))
+      or ((Length(FVarDeclaration.DefaultValue) > 0) and (FVarDeclaration.DefaultValue[1] = '"')) then
     begin
       if VarDeclaration.IsLocal then
       begin

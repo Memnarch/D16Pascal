@@ -3,6 +3,10 @@ unit Optimizer;
 interface
 
 function OptimizeDCPUCode(AIn: string): string;
+function SimpleOptimizeDCPUCode(AIn: string): string;
+
+var
+  DoOptimization: Boolean = True;
 
 implementation
 
@@ -78,6 +82,41 @@ begin
   RemoveEmptyLines(ALines);
 end;
 
+procedure OptimizePopPush(ALines: TStrings);
+var
+  i: Integer;
+  LOpA, LOpB, LTargetA, LTargetB, LSourceA, LSourceB: string;
+begin
+  for i := 0 to ALines.Count-2 do
+  begin
+    SplitLine(ALines.Strings[i], LOpA, LTargetA, LSourceA);
+    SplitLine(ALines.Strings[i+1], LOpB, LTargetB, LSourceB);
+    if SameText(LSourceA, 'pop') and SameText(LTargetB, 'push') then
+    begin
+      if SameText(LTargetA, LSourceB) then
+      begin
+        ALines.Strings[i] := '';
+        ALines.Strings[i+1] := '';
+      end
+      else
+      begin
+        ALines.Strings[i] := 'set [sp], ' + LTargetB;
+        ALines.Strings[i+1] := '';
+      end;
+    end;
+  end;
+  RemoveEmptyLines(ALines);
+end;
+
+function IsRegister(AIn: string): Boolean;
+var
+  LReg: string;
+begin
+  LReg := StringReplace(AIn, '[', '', []);
+  LReg := StringReplace(LReg, ']', '', []);
+  Result := AnsiIndexText(LReg, ['a', 'b', 'c', 'x', 'y', 'z', 'i', 'j']) >= 0;
+end;
+
 procedure OptimizePushNopPop(ALines: TStrings);
 var
   LOpA, LOpB, LTargetA, LTargetB, LSourceA, LSourceB: string;
@@ -93,6 +132,10 @@ begin
       for k := i+1 to ALines.Count-1 do
       begin
         SplitLine(ALines.Strings[k], LOpB, LTargetB, LSourceB);
+        if SameText(LOpB, 'jsr') and IsRegister(LSourceA) then
+        begin
+          Break;
+        end;
         if SameText(LTargetB, 'push') then
         begin
           Inc(LLevel);
@@ -164,7 +207,7 @@ begin
     begin
       if SameText(LTargetA, LTargetB) and SameText(LTargetB, LSourceC) then
       begin
-        if SameText(LSourceA, LTargetC) then
+        if SameText(LSourceA, LTargetC) and not (SameText(LTargetC, LSourceC)) then
         begin
           ALines.Strings[i] := '';
           ALines.Strings[i+1] := LOpB + ' ' + LTargetC + ', ' + LSourceB;
@@ -172,9 +215,12 @@ begin
         end
         else
         begin
-          ALines.Strings[i] := LOpA + ' ' + LTargetC + ', ' + LSourceA;
-          ALines.Strings[i+1] := LOpB + ' ' + LTargetC + ', ' + LSourceB;
-          ALines.Strings[i+2] := '';
+          if not SameText(LTargetC, LSOurceB) then
+          begin
+            ALines.Strings[i] := LOpA + ' ' + LTargetC + ', ' + LSourceA;
+            ALines.Strings[i+1] := LOpB + ' ' + LTargetC + ', ' + LSourceB;
+            ALines.Strings[i+2] := '';
+          end;
         end;
       end;
     end;
@@ -309,17 +355,43 @@ end;
 function OptimizeDCPUCode(AIn: string): string;
 var
   LLines: TStringList;
+  LLastCount: Integer;
 begin
   LLines := TStringList.Create();
   LLines.Text := AIn;
-  OptimizePushPop(LLines);
-  OptimizePushNopPop(LLines);
-  OptimizeMoveMove(LLines);
-  ////OptimizeMoveOpMove(LLines);//added as last
-  OptimizeMoveOP(LLines);
-  OptimizeMovNopMov(LLines);
-  OptimizeMovNopIf(LLines);
-  OptimizeMoveOpMove(LLines);
+  LLastCount := 0;
+  if DoOptimization then
+  begin
+    while LLastCount <> LLines.Count do
+    begin
+      LLastCount := LLines.Count;
+      OptimizePushPop(LLines);
+      OptimizePopPush(LLines);
+      OptimizeMoveMove(LLines);
+      OptimizeMoveOP(LLines);
+      OptimizeMoveOpMove(LLines);
+      OptimizePushNopPop(LLines);
+      OptimizeMovNopMov(LLines);
+      OptimizeMovNopIf(LLines);
+    end;
+  end;
+  Result := LLines.Text;
+  LLines.Free;
+end;
+
+function SimpleOptimizeDCPUCode(AIn: string): string;
+var
+  LLines: TStringList;
+begin
+  LLines := TStringList.Create();
+  LLines.Text := AIn;
+  if DoOptimization then
+  begin
+    OptimizePushPop(LLines);
+    OptimizePopPush(LLines);
+    OptimizeMoveMove(LLines);
+    OptimizeMoveOP(LLines);
+  end;
   Result := LLines.Text;
   LLines.Free;
 end;

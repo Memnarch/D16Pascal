@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  VarDeclaration;
+  VarDeclaration, Optimizer;
 
 { TPascalUnit }
 
@@ -66,6 +66,7 @@ begin
   begin
     LInit := LInit + LElement.GetDCPUSource();
   end;
+  LInit := SimpleOptimizeDCPUCode(LInit);
   Result := LInit + Result + LData + FFooterSource.Text;
 end;
 

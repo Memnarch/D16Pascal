@@ -29,7 +29,7 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils, Optimizer;
 
 { TProcDeclaration }
 
@@ -95,6 +95,7 @@ begin
     Result := Result + 'set j, pop' + sLineBreak;
   end;
   Result := Result + 'set pc, pop' + sLineBreak;
+  Result := SimpleOptimizeDCPUCode(Result);
 end;
 
 function TProcDeclaration.GetElement(AName: string;
