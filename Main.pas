@@ -48,6 +48,7 @@ begin
     Exit;
   end;
   DoOptimization := cbOptimize.Checked;
+  FErrors := 0;
   Log.Clear;
   LCompiler := TCompiler.Create();
   LCompiler.OnMessage := OnMessage;

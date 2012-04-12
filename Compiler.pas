@@ -278,7 +278,9 @@ begin
   begin
     LToken := FLexer.GetToken();
     LBlock.Source := LBlock.Source + LToken.Content;
-    if LToken.IsType(ttIdentifier) then
+    if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)
+        or (AnsiIndexText(LToken.Content, ['and', 'or', 'mod']) >= 0))
+      and (not (FLexer.PeekToken.IsContent(']') or FLexer.PeekToken.IsType(ttTermOp))) then
     begin
       LBlock.Source := LBlock.Source + ' ';
     end;
@@ -544,7 +546,6 @@ begin
   begin
     FLexer.GetToken(':');
     LProc.ResultType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
-    LProc.AddResultValue();
   end;
   FLexer.GetToken(';');
   if FLexer.PeekToken.IsContent('var') then
@@ -557,6 +558,10 @@ begin
   end
   else
   begin
+    if LIsFunction then
+    begin
+      LProc.AddResultValue();
+    end;
     FLexer.GetToken('begin');
     ParseRoutineContent(LProc.SubElements);
     FLexer.GetToken('end');

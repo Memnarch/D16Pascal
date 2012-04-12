@@ -80,7 +80,7 @@ begin
     Result := Result + 'set j, sp' + sLineBreak;
   end;
   Result := Result + inherited GetDCPUSource();
-  if IsFunction then
+  if IsFunction and (FLocals.Count > 0) then
   begin
     Result := Result + 'set a, [' +
       TVarDeclaration(GetElement('Result', TVarDeclaration)).GetAccessIdentifier() + ']' + sLineBreak;
@@ -95,7 +95,7 @@ begin
     Result := Result + 'set j, pop' + sLineBreak;
   end;
   Result := Result + 'set pc, pop' + sLineBreak;
-  Result := SimpleOptimizeDCPUCode(Result);
+  //Result := SimpleOptimizeDCPUCode(Result);
 end;
 
 function TProcDeclaration.GetElement(AName: string;

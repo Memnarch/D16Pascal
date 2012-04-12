@@ -62,7 +62,7 @@ begin
   Result := Result + inherited;
   if FElseElements.Count > 0 then
   begin
-    Result := Result + 'set pc, ' + LEnd;
+    Result := Result + 'set pc, ' + LEnd + sLineBreak;
     Result := Result + ':' + LElse + sLineBreak;
     for LElement in FElseElements do
     begin

@@ -251,7 +251,14 @@ begin
     if SameText(LOpA, 'set') and SameText(LOpA, LOpB) and SameText(LTargetA, LSourceB) then
     begin
       ALines.Strings[i] := '';
-      ALines.Strings[i+1] := LOpB + ' ' + LTargetB + ', ' + LSourceA;
+      if not SameText(LTargetB, LSourceA) then
+      begin
+        ALines.Strings[i+1] := LOpB + ' ' + LTargetB + ', ' + LSourceA;
+      end
+      else
+      begin
+        ALines.Strings[i+1] := '';
+      end;
     end;
   end;
   RemoveEmptyLines(ALines);
