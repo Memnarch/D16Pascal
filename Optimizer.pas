@@ -203,11 +203,14 @@ begin
     SplitLine(ALines.Strings[i], LOpA, LTargetA, LSourceA);
     SplitLine(ALines.Strings[i+1], LOpB, LTargetB, LSourceB);
     SplitLine(ALines.Strings[i+2], LOpC, LTargetC, LSourceC);
-    if SameText(LOpA, 'set') and SameText(LOpC, 'set') and (not SameText(LOpB, 'set')) then
+    if SameText(LOpA, 'set')
+      and SameText(LOpC, 'set')
+      and (not SameText(LOpB, 'set'))
+      and (not SameText(LTargetC, 'push')) then
     begin
       if SameText(LTargetA, LTargetB) and SameText(LTargetB, LSourceC) then
       begin
-        if SameText(LSourceA, LTargetC) and not (SameText(LTargetC, LSourceC)) then
+        if SameText(LSourceA, LTargetC) and (not (SameText(LTargetC, LSourceC))) then
         begin
           ALines.Strings[i] := '';
           ALines.Strings[i+1] := LOpB + ' ' + LTargetC + ', ' + LSourceB;

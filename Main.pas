@@ -76,6 +76,7 @@ var
   LCompiler: TCompiler;
 begin
   Log.Clear;
+  Log.Gutter.ShowLineNumbers := True;
   LCompiler := TCompiler.Create();
   LCompiler.OnMessage := OnMessage;
   LCompiler.SearchPath.Add('E:\Git\D16Pascal\DemoSource\');

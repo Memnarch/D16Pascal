@@ -21,7 +21,8 @@ uses
   Condition in 'Condition.pas',
   Loops in 'Loops.pas',
   ProcCall in 'ProcCall.pas',
-  ASMBlock in 'ASMBlock.pas';
+  ASMBlock in 'ASMBlock.pas',
+  D16Assembler in 'D16Assembler.pas';
 
 {$R *.res}
 

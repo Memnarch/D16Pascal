@@ -2,7 +2,7 @@ object Form2: TForm2
   Left = 0
   Top = 0
   Caption = 'D16-Pascal Compiler by Memnarch'
-  ClientHeight = 220
+  ClientHeight = 230
   ClientWidth = 506
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -17,7 +17,7 @@ object Form2: TForm2
     Left = 0
     Top = 73
     Width = 506
-    Height = 147
+    Height = 157
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -34,6 +34,7 @@ object Form2: TForm2
     ReadOnly = True
     TabWidth = 2
     WantTabs = True
+    ExplicitHeight = 604
   end
   object ToolBar1: TToolBar
     AlignWithMargins = True
@@ -79,7 +80,7 @@ object Form2: TForm2
     Left = 248
     Top = 120
     Bitmap = {
-      494C0101010008002C0020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010101000800340020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

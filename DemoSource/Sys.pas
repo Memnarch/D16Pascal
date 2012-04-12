@@ -89,7 +89,7 @@ var
 	LVid: Word;
 begin
 	LVid := 0x8000 + TextCursor;
-	LVid^ := AChar;
+	LVid^ := AChar + TextColor;
 	TextCursor := TextCursor + 1;
 end;
 
