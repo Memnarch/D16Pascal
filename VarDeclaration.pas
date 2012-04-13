@@ -3,7 +3,7 @@ unit VarDeclaration;
 interface
 
 uses
-  Classes, Types, CodeElement, DataType;
+  Classes, Types, CodeElement, DataType, Operations;
 
 type
   TVarDeclaration = class(TCodeElement)
@@ -85,8 +85,27 @@ begin
 end;
 
 function TVarDeclaration.GetDCPUSource: string;
+var
+  i, LSize: Integer;
 begin
-  Result := ':' + Name + ' dat ' + FDefaultValue + sLineBreak;
+  Result := ':' + Name + ' dat ';
+  if DataType.RawType = rtArray then
+  begin
+    LSize := DataType.GetRamWordSize();
+    for i := 0 to LSize - 1 do
+    begin
+      Result := Result + '0x0';
+      if i < LSize - 1 then
+      begin
+        Result := Result + ', ';
+      end;
+    end;
+  end
+  else
+  begin
+    Result := Result + FDefaultValue;
+  end;
+  Result := Result + sLineBreak;
 end;
 
 function TVarDeclaration.IsLocal: Boolean;

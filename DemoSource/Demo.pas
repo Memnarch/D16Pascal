@@ -1,22 +1,30 @@
 unit Demo;
 
 uses
-	Sys;
+	Types, Sys, ScreenIO;
+
+type
+	TTestArray = array[10] of Word;
+	PTestArray = ^TTestArray;
 	
 var
-	msgHello: Word = 'Hello World';
-	msgMulti: Word = 'Multiline\nText';
-	msgKey: Word = 'Key Test:';
-	PFrom: Word = 0x8000;
-	PTo: Word = 0x8040;
+	msgHello: string = 'Hello World';
+	msgMulti: string = 'Multiline\nText';
+	msgKey: string = 'Key Test:';
+	PTest: TTestArray;
+	LVar: Word = 5;
 	
 begin
+	CLS(0);
 	PrintLn(msgKey);
 	PrintHex(0xF23c);
 	while true do
 	begin
 		PrintChar(GetKey());
+		if KeyOffset >= 511 then
+		begin
+			Cls(0);
+		end;
 	end;
-	CLS();
 	Halt();
 end.

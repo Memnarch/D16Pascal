@@ -43,7 +43,6 @@ var
   i, k, m, LCount: Integer;
   LOpA, LOpB, LTargetA, LTargetB, LSourceA, LSourceB: string;
 begin
-  k := 0;
   for i := 0 to ALines.Count - 2 do
   begin
     if StartsText('set push', ALines.Strings[i]) then
@@ -237,6 +236,7 @@ var
   i: Integer;
   LSkipNext: Boolean;
 begin
+  LSkipNext := False;
   for i := 0 to ALines.Count-2 do
   begin
     if LSkipNext then
@@ -251,12 +251,21 @@ begin
       continue;
     end;
     SplitLine(ALines.Strings[i+1], LOpB, LTargetB, LSourceB);
-    if SameText(LOpA, 'set') and SameText(LOpA, LOpB) and SameText(LTargetA, LSourceB) then
+    if SameText(LOpA, 'set') and SameText(LOpA, LOpB)
+      and (SameText(LTargetA, LSourceB) or SameText('['+LTargetA+']', LSourceB)) then
     begin
       ALines.Strings[i] := '';
       if not SameText(LTargetB, LSourceA) then
       begin
-        ALines.Strings[i+1] := LOpB + ' ' + LTargetB + ', ' + LSourceA;
+        ALines.Strings[i+1] := LOpB + ' ' + LTargetB + ', ';
+        if StartsText('[', LSourceB) then
+        begin
+          ALines.Strings[i+1] := ALines.Strings[i+1] + '[' + LSourceA + ']' + sLineBreak;
+        end
+        else
+        begin
+          ALines.Strings[i+1] := ALines.Strings[i+1]  + LSourceA + sLineBreak;
+        end;
       end
       else
       begin
@@ -273,6 +282,7 @@ var
   i, k: Integer;
   LSkipNext: Boolean;
 begin
+  LSkipNext := False;
   for i := 0 to ALines.Count - 1 do
   begin
     if LSkipNext then
@@ -317,6 +327,7 @@ var
   i, k: Integer;
   LSkipNext: Boolean;
 begin
+  LSkipNext := False;
   for i := 0 to ALines.Count - 1 do
   begin
     if LSkipNext then

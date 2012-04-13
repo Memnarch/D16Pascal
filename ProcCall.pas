@@ -14,6 +14,7 @@ type
     constructor Create(); reintroduce;
     destructor Destroy(); override;
     function GetDCPUSource(): string; override;
+    function GetWordSizeOfLocals(): Integer;
     property ProcDeclaration: TProcDeclaration read FProcDeclaration write FProcDeclaration;
     property Parameters: TObjectList<TCodeElement> read FParameters write FParameters;
   end;
@@ -21,7 +22,7 @@ type
 implementation
 
 uses
-  Optimizer, SysUtils;
+  Optimizer, SysUtils, VarDeclaration;
 
 { TProcCall }
 
@@ -39,7 +40,6 @@ end;
 
 function TProcCall.GetDCPUSource: string;
 var
-  LElement: TCodeElement;
   LRelSource: string;
   i, LMax: Integer;
   LRegisters: string;
@@ -94,6 +94,20 @@ begin
     Result := Result + 'set push, x' + sLineBreak;
   end;
 
+end;
+
+function TProcCall.GetWordSizeOfLocals: Integer;
+var
+  LElement: TCodeElement;
+begin
+  Result := 0;
+  for LElement in FParameters do
+  begin
+    if TVarDeclaration(LElement).IsLocal then
+    begin
+      Result := Result + TVarDeclaration(LElement).DataType.GetRamWordSize();
+    end;
+  end;
 end;
 
 end.

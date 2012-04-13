@@ -20,7 +20,7 @@ type
     constructor Create(AContent: string; AType: TTokenType);
     function IsContent(AContent: string): Boolean;
     function IsType(AType: TTokenType): Boolean;
-    function ToString(): string;
+    function ToString(): string; override;
     procedure MatchContent(AContent: string);
     procedure MatchType(AType: TTokenType);
     property Content: string read FContent;

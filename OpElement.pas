@@ -3,15 +3,15 @@ unit OpElement;
 interface
 
 uses
-  Classes, Types, CodeElement;
+  Classes, Types, Generics.Collections, CodeElement, Operation;
 
 type
   TOpElement = class(TCodeElement)
   private
-    FOperators: TStringList;
+    FOperations: TObjectList<TOperation>;
   public
     constructor Create(); reintroduce;
-    property Operators: TStringList read FOperators;
+    property Operations: TObjectList<TOperation> read FOperations;
   end;
 
 implementation
@@ -21,7 +21,7 @@ implementation
 constructor TOpElement.Create;
 begin
   inherited Create('');
-  FOperators := TStringList.Create();
+  FOperations := TObjectList<TOperation>.Create(False);
 end;
 
 end.

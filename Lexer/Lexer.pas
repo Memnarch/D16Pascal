@@ -210,10 +210,11 @@ var
   LChar: Char;
 begin
   LHasDot := False;
+  LIsHexa := False;
   LContent := GetChar();
   NextChar();
   LChar := GetChar();
-  while (CharInSet(LChar, ['0'..'9','.'])) or (LIsHexa and CharInSet(LChar, ['0'..'9','x', 'X', 'a'..'f', 'A'..'F'])) do
+  while (CharInSet(LChar, ['0'..'9','.', 'x'])) or (LIsHexa and CharInSet(LChar, ['0'..'9','x', 'X', 'a'..'f', 'A'..'F'])) do
   begin
     if LChar = '.' then
     begin
@@ -228,7 +229,7 @@ begin
     end;
     if (SameText(LChar, 'x')) then
     begin
-      if LContent = '0' then
+      if SameText(LContent, '0') and not (LIsHexa) then
       begin
         LIsHexa := True;
       end

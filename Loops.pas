@@ -9,7 +9,6 @@ type
   TLoop = class(TCodeElement)
   private
     FRelation: TObjectList<TCodeElement>;
-  published
   public
     constructor Create(); reintroduce;
     destructor Destroy(); override;
@@ -18,12 +17,12 @@ type
 
   TWhileLoop = class(TLoop)
   public
-    function GetDCPUSOurce(): string; override;
+    function GetDCPUSource(): string; override;
   end;
 
   TRepeatLoop = class(TLoop)
   public
-    function GetDCPUSOurce(): string; override;
+    function GetDCPUSource(): string; override;
   end;
 
 implementation

@@ -4,31 +4,40 @@ interface
 
 uses
   Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
-  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock;
+  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations;
 
 type
   TMessageLevel = (mlNone, mlWarning, mlError, mlFatal);
   TOnMessage = procedure(AMessage, AUnitName: string; ALine: Integer; ALevel: TMessageLevel) of object;
 
-  TCompiler = class
+  TCompiler = class(TInterfacedObject, IOperations)
   private
     FLexer: TLexer;
     FUnits: TObjectList<TPascalUnit>;
+    FOperations: TObjectList<TOperation>;
     FCurrentUnit: TPascalUnit;
     FCurrentProc: TProcDeclaration;
     FSearchPath: TStringlist;
     FOnMessage: TOnMessage;
     procedure CompileUnit(AUnit: TPascalUnit);
-    procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TDataPrimitive = dpInteger);
+    procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
+      ABaseType: TDataType = nil);
+    procedure RegisterOperation(AOpName: string; ALeftType, ARightType: TRawType; ALeftSize, ARightSize: Integer;
+      AResultType:TDataType; AAssembler: string);
     procedure RegisterBasicTypes();
+    procedure RegisterOperations();
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function ExpectElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function GetDataType(AName: string): TDataType;
     function GetVar(AName: string): TVarDeclaration;
+    function GetOperation(AOperation: string; ALeftType,
+      ARightType: TDataType): TOperation;
     //parse functions
     procedure ParseUnitHeader(AUnit: TPascalUnit);
     procedure ParseUnitFooter();
     procedure ParseUses(AScope: TObjectList<TCodeElement>);
+    procedure ParseTypes(AScope: TObjectList<TCodeElement>);
+    procedure ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseVars(AScope: TObjectList<TCodeElement>);
     procedure ParseVarDeclaration(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True;
       AAsParameter: Boolean = False; AAsLocal: Boolean = False);
@@ -37,15 +46,15 @@ type
     procedure ParseRoutineParameters(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineLocals(AProc: TProcDeclaration);
     procedure ParseRoutineContent(AScope: TObjectList<TCodeElement>);
-    procedure ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True);
-    procedure ParseAssignment(AScope: TObjectList<TCodeElement>);
+    function ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True): TDataType;
+    function ParseAssignment(AScope: TObjectList<TCodeElement>): TDataType;
     procedure ParseCondition(AScope: TObjectList<TCodeElement>);
     procedure ParseWhileLoop(AScope: TObjectList<TCodeElement>);
     procedure ParseRepeatLoop(AScope: TObjectList<TCodeElement>);
-    procedure ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False);
-    procedure ParseExpression(AScope: TObjectList<TCodeElement>);
-    procedure ParseTerm(AScope: TObjectList<TCodeElement>);
-    procedure ParseFactor(AScope: TObjectList<TCodeElement>);
+    function ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False): TDataType;
+    function ParseExpression(AScope: TObjectList<TCodeElement>): TDataType;
+    function ParseTerm(AScope: TObjectList<TCodeElement>): TDataType;
+    function ParseFactor(AScope: TObjectList<TCodeElement>): TDataType;
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
@@ -108,13 +117,14 @@ begin
   if FUnits.Count = 1 then
   begin
     RegisterBasicTypes();
+    RegisterOperations();
   end;
   try
     try
       ParseUnitHeader(AUnit);
       while True do
       begin
-        case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function']) of
+        case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function', 'type']) of
           0:
           begin
             ParseUses(AUnit.SubElements);
@@ -135,6 +145,10 @@ begin
             ParseRoutineDeclaration(AUnit.SubElements);
           end;
 
+          5:
+          begin
+            ParseTypes(AUnit.SubElements);
+          end
           else
             break;
         end;
@@ -158,6 +172,7 @@ end;
 constructor TCompiler.Create;
 begin
   FUnits := TObjectList<TPascalUnit>.Create();
+  FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
 end;
 
@@ -165,6 +180,7 @@ destructor TCompiler.Destroy;
 begin
   FUnits.Free;
   FSearchPath.Free;
+  FOperations.Free;
   inherited;
 end;
 
@@ -238,6 +254,28 @@ begin
   end;
 end;
 
+function TCompiler.GetOperation(AOperation: string; ALeftType,
+  ARightType: TDataType): TOperation;
+var
+  LOperation: TOperation;
+begin
+  Result := nil;
+  for LOperation in FOperations do
+  begin
+    if SameText(LOperation.OpName, AOperation) and (LOperation.LeftRawType = ALeftType.RawType) and (LOperation.RightRawType = ARightType.RawType)
+      and (LOperation.LeftSize = ALeftType.Size) and (LOperation.RightSize = ARightType.Size) then
+    begin
+      Result := LOperation;
+      Break;
+    end;
+  end;
+  if not Assigned(Result) then
+  begin
+    Fatal('Operator ' + QuotedStr(AOperation) + ' not applicable to ' +
+      QuotedStr(ALeftType.Name) + ' and ' + QuotedStr(ARightType.Name));
+  end;
+end;
+
 function TCompiler.GetPathForFile(AFile: string): string;
 var
   LPath: string;
@@ -293,11 +331,19 @@ begin
   FLexer.GetToken(';');
 end;
 
-procedure TCompiler.ParseAssignment(AScope: TObjectList<TCodeElement>);
+function TCompiler.ParseAssignment(AScope: TObjectList<TCodeElement>): TDataType;
 var
   LAssignment: TAssignment;
+  LRelType: TDataType;
+  LOverride: TDataType;
 begin
+  LOverride := nil;
   LAssignment := TAssignment.Create('');
+  if FLexer.PeekToken.IsType(ttIdentifier) and FLexer.AHeadToken.IsContent('(') then
+  begin
+    LOverride := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
+    FLexer.GetToken('(');
+  end;
   LAssignment.TargetVar := GetVar(FLexer.GetToken('', ttIdentifier).Content);
   AScope.Add(LAssignment);
   if FLexer.PeekToken.IsContent('^') then
@@ -305,9 +351,23 @@ begin
     LAssignment.Dereference := True;
     FLexer.GetToken();
   end;
+  Result := LAssignment.TargetVar.DataType;
+  if Assigned(LOverride) then
+  begin
+    FLexer.GetToken(')');
+    Result := LOverride;
+  end;
+  if LAssignment.Dereference then
+  begin
+    Result := Result.BaseType;
+  end;
   FLexer.GetToken(':=');
-  ParseRelation(LAssignment.SubElements);
+  LRelType := ParseRelation(LAssignment.SubElements);
   FLexer.GetToken(';');
+  if LRelType.RawType <> Result.RawType then
+  begin
+    Fatal('Cannot assign ' + QuotedStr(LRelType.Name) + ' to ' + QuotedStr(Result.Name));
+  end;
 end;
 
 procedure TCompiler.ParseCondition(AScope: TObjectList<TCodeElement>);
@@ -337,43 +397,72 @@ begin
 
 end;
 
-procedure TCompiler.ParseExpression(AScope: TObjectList<TCodeElement>);
+function TCompiler.ParseExpression(AScope: TObjectList<TCodeElement>): TDataType;
 var
   LExpression: TExpression;
+  LLastResult: TDataType;
+  LOperation: TOperation;
+  LOperator: string;
 begin
   LExpression := TExpression.Create();
   AScope.Add(LExpression);
-  ParseTerm(LExpression.SubElements);
+  Result := ParseTerm(LExpression.SubElements);
   while FLexer.PeekToken.IsType(ttTermOp) do
   begin
-    LExpression.Operators.Add(FLexer.GetToken().Content);
-    ParseTerm(LExpression.SubElements);
+    LOperator := FLexer.GetToken().Content;
+    //LExpression.Operators.Add(LOperation);
+    LLastResult := Result;
+    Result := ParseTerm(LExpression.SubElements);
+    LOperation := GetOperation(LOperator, LLastResult, Result);
+    Result := LOperation.ResultType;
+    LExpression.Operations.Add(LOperation);
   end;
 end;
 
-procedure TCompiler.ParseFactor(AScope: TObjectList<TCodeElement>);
+function TCompiler.ParseFactor(AScope: TObjectList<TCodeElement>): TDataType;
 var
   LFactor: TFactor;
+  LRelation: TRelation;
   LInverse: Boolean;
   LTempID, LContent, LData: string;
+  LOverride: TDataType;
 begin
   LInverse := False;
+  LOverride := nil;
   while FLexer.PeekToken.IsContent('not') do
   begin
     FLexer.GetToken('not');
     LInverse := not LInverse;
   end;
+  if FLexer.PeekToken.IsType(ttIdentifier)
+    and FLexer.AHeadToken.IsContent('(')
+    and not Assigned(GetElement(FLexer.PeekToken.Content, TProcDeclaration))
+  then
+  begin
+    LOverride := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
+  end;
   if FLexer.PeekToken.IsContent('(') then
   begin
     FLexer.GetToken('(');
-    ParseRelation(AScope, LInverse);
+    Result := ParseRelation(AScope, LInverse);
+    LRelation := TRelation(AScope.Items[AScope.Count - 1]);
+    if Assigned(LOverride) then
+    begin
+      Result := LOverride;
+    end;
     FLexer.GetToken(')');
+    if FLexer.PeekToken.IsContent('^') and Assigned(LOverride) then
+    begin
+      FLexer.GetToken('^');
+      LRelation.Dereference := True;
+      Result := Result.BaseType;
+    end;
   end
   else
   begin
     if Assigned(GetElement(FLexer.PeekToken.Content, TProcDeclaration)) then
     begin
-      ParseRoutineCall(AScope, False);
+      Result := ParseRoutineCall(AScope, False);
     end
     else
     begin
@@ -383,11 +472,13 @@ begin
       if FLexer.PeekToken.IsType(ttNumber) then
       begin
         LFactor.Value := FLexer.GetToken().Content;
+        Result := GetDataType('word');
       end
       else
       begin
         if FLexer.PeekToken.IsType(ttCharLiteral) then
         begin
+          Result := GetDataType('string');
           LTempID := FCurrentUnit.GetUniqueID('str');
           LFactor.Value := LTempID;
           LContent := FLexer.GetToken().Content;
@@ -406,6 +497,7 @@ begin
             LFactor.GetAdress := True;
           end;
           LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+          Result := LFactor.VarDeclaration.DataType;
           if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
           begin
             Fatal('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
@@ -421,22 +513,38 @@ begin
           Fatal('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
         end;
       end;
+      if LFactor.Dereference then
+      begin
+        Result := Result.BaseType;
+      end;
+      if LFactor.GetAdress then
+      begin
+        Result := GetDataType('pointer');
+      end;
     end;
   end;
 end;
 
-procedure TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False);
+function TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False): TDataType;
 var
   LRelation: TRelation;
+  LLastResult: TDataType;
+  LOperator: string;
+  LOperation: TOperation;
 begin
   LRelation := TRelation.Create();
   LRelation.Inverse := AInverse;
   AScope.Add(LRelation);
-  ParseExpression(LRelation.SubElements);
+  Result := ParseExpression(LRelation.SubElements);
   if FLexer.PeekToken.IsType(ttRelOp) then
   begin
-    LRelation.Operators.Add(FLexer.GetToken().Content);
-    ParseExpression(LRelation.SubElements);
+    LOperator := FLexer.GetToken().Content;
+    //LRelation.Operators.Add(LOperation);
+    LLastResult := Result;
+    Result := ParseExpression(LRelation.SubElements);
+    LOperation := GetOperation(LOperator, LLastResult, Result);
+    LRelation.Operations.Add(LOperation);
+    Result := LOperation.ResultType;
   end;
 end;
 
@@ -453,18 +561,29 @@ begin
   FLexer.GetToken(';');
 end;
 
-procedure TCompiler.ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True);
+function TCompiler.ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True): TDataType;
 var
   LCall: TProcCall;
   i: Integer;
+  LParamType: TDataType;
 begin
+  Result := nil;
   LCall := TProcCall.Create();
   AScope.Add(LCall);
   LCall.ProcDeclaration := TProcDeclaration(ExpectElement(FLexer.GetToken().Content, TProcDeclaration));
+  if LCall.ProcDeclaration.IsFunction then
+  begin
+    Result := LCall.ProcDeclaration.ResultType;
+  end;
   FLexer.GetToken('(');
   for i := 0 to LCall.ProcDeclaration.Parameters.Count - 1 do
   begin
-    ParseRelation(LCall.Parameters);
+    LParamType := ParseRelation(LCall.Parameters);
+    if  LParamType.RawType <> TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).DataType.RawType then
+    begin
+      Fatal('Valuetype does not match with parameter type');
+    end;
+
     if i < LCall.ProcDeclaration.Parameters.Count - 1 then
     begin
       FLexer.GetToken(',');
@@ -506,13 +625,13 @@ begin
 
           else
             LElement := ExpectElement(FLexer.PeekToken.Content, TCodeElement);
-            if LElement is TVarDeclaration then
+            if LElement is TProcDeclaration then
             begin
-              ParseAssignment(AScope);
+              ParseRoutineCall(AScope);
             end
             else
             begin
-              ParseRoutineCall(AScope);
+              ParseAssignment(AScope);
             end;
         end;
       end;
@@ -602,17 +721,70 @@ begin
   FLexer.GetToken(')');
 end;
 
-procedure TCompiler.ParseTerm(AScope: TObjectList<TCodeElement>);
+function TCompiler.ParseTerm(AScope: TObjectList<TCodeElement>): TDataType;
 var
   LTerm: TTerm;
+  LLastResult: TDataType;
+  LOperator: string;
+  LOperation: TOperation;
 begin
   LTerm := TTerm.Create();
   AScope.Add(LTerm);
-  ParseFactor(LTerm.SubElements);
+  Result := ParseFactor(LTerm.SubElements);
   while FLexer.PeekToken.IsType(ttFacOp) do
   begin
-    LTerm.Operators.Add(FLexer.GetToken().Content);
-    ParseFactor(LTerm.SubElements);
+    LOperator := FLexer.GetToken().Content;
+    //LTerm.Operators.Add(LOperation);
+    LLastResult := Result;
+    Result := ParseFactor(LTerm.SubElements);
+    LOperation := GetOperation(LOperator, LLastResult, Result);
+    Result := LOperation.ResultType;
+    LTerm.Operations.Add(LOperation);
+  end;
+end;
+
+procedure TCompiler.ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
+var
+  LType: TDataType;
+  LName: string;
+  LDimensions: TList<Integer>;
+  LDimension: Integer;
+begin
+  LName := FLexer.GetToken('', ttIdentifier).Content;
+  FLexer.GetToken('=');
+  if FLexer.PeekToken.IsContent('^') then
+  begin
+    FLexer.GetToken('^');
+    AScope.Add(TDataType.Create(LName, 2, rtPointer, GetDataType(FLexer.GetToken('', ttIdentifier).Content)));
+  end;
+  if FLexer.PeekToken.IsContent('array') then
+  begin
+    LDimensions := TList<Integer>.Create();
+    while FLexer.PeekToken.IsContent('array') do
+    begin
+      FLexer.GetToken('array');
+      FLexer.GetToken('[');
+      LDimensions.Add(StrToInt(FLexer.GetToken('', ttNumber).Content));
+      FLexer.GetToken(']');
+      FLexer.GetToken('of');
+    end;
+    LType := TDataType.Create(LName, 2, rtArray, GetDataType(FLexer.GetToken('', ttIdentifier).Content));
+    for LDimension in LDimensions do
+    begin
+      LType.Dimensions.Add(LDimension);
+    end;
+    AScope.Add(LType);
+    LDimensions.Free;
+  end;
+  FLexer.GetToken(';');
+end;
+
+procedure TCompiler.ParseTypes(AScope: TObjectList<TCodeElement>);
+begin
+  FLexer.GetToken('type');
+  while not FLexer.PeekToken.IsType(ttReserved) do
+  begin
+    ParseTypeDeclaration(AScope);
   end;
 end;
 
@@ -653,6 +825,7 @@ begin
   LNames := TStringList.Create();
   LRepeat := False;
   LDef := '0x0';
+  LIndex :=0;
   while (not FLexer.PeekToken.IsContent(':')) or LRepeat do
   begin
     LNames.Add(FLexer.GetToken('', ttIdentifier).Content);
@@ -668,7 +841,7 @@ begin
   if AIncludeEndMark and (not (AAsParameter or AAsLocal)) and (FLexer.PeekToken.IsContent('=')) then
   begin
     FLexer.GetToken();
-    if FLexer.PeekToken.IsType(ttCharLiteral) then
+    if LType.RawType = rtString then
     begin
       LDef := '"' + StringReplace(FLexer.GetToken('', ttCharLiteral).Content, '\n', '",10,"', [rfReplaceAll, rfIgnoreCase]) + '",0x0';
     end
@@ -741,12 +914,54 @@ end;
 procedure TCompiler.RegisterBasicTypes;
 begin
   RegisterType('word');
+  RegisterType('string', 2, rtString);
+  RegisterType('boolean', 2, rtBoolean);
+  RegisterType('pointer', 2, rtPointer, GetDataType('word'));
+end;
+
+procedure TCompiler.RegisterOperation(AOpName: string; ALeftType,
+  ARightType: TRawType; ALeftSize, ARightSize: Integer; AResultType: TDataType; AAssembler: string);
+begin
+  FOperations.Add(TOperation.Create(AOpName, ALeftType, ARightType, ALeftSize, ARightSize, AResultType, AAssembler));
+end;
+
+procedure TCompiler.RegisterOperations;
+begin
+  //word operations
+  RegisterOperation('+', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'add $0, $1' + sLineBreak);
+  RegisterOperation('-', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'sub $0, $1' + sLineBreak);
+  RegisterOperation('*', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'mul $0, $1' + sLineBreak);
+  RegisterOperation('/', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'div $0, $1' + sLineBreak);
+  RegisterOperation('mod', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'mod $0, $1' + sLineBreak);
+  RegisterOperation('shl', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'shl $0, $1' + sLineBreak);
+  RegisterOperation('shr', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'shr $0, $1' + sLineBreak);
+  RegisterOperation('and', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'and $0, $1' + sLineBreak);
+  RegisterOperation('or', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'bor $0, $1' + sLineBreak);
+  RegisterOperation('xor', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'xor $0, $1' + sLineBreak);
+  //word operations returning bool
+  RegisterOperation('>', rtUInteger, rtUInteger, 2, 2, GetDataType('boolean'), 'ifg $0, $1' + sLineBreak);
+  RegisterOperation('<', rtUInteger, rtUInteger, 2, 2, GetDataType('boolean'), 'ifg $1, $0' + sLineBreak);
+  RegisterOperation('=', rtUInteger, rtUInteger, 2, 2, GetDataType('boolean'), 'ife $0, $1' + sLineBreak);
+  RegisterOperation('<>', rtUInteger, rtUInteger, 2, 2, GetDataType('boolean'), 'ifn $0, $1' + sLineBreak);
+  RegisterOperation('>=', rtUInteger, rtUInteger, 2, 2, GetDataType('boolean'), 'ifg $0, $1' + sLineBreak +
+                                                                              'set $2, $3' + sLineBreak +
+                                                                              'ife $0, $1' + sLineBreak);
+  RegisterOperation('<=', rtUInteger, rtUInteger, 2, 2, GetDataType('word'), 'ifg $1, $0' + sLineBreak +
+                                                                              'set $2, $3' + sLineBreak +
+                                                                              'ife $0, $1' + sLineBreak);
+  //bool operations
+  RegisterOperation('and', rtBoolean, rtBoolean, 2, 2, GetDataType('boolean'), 'and $0, $1' + sLineBreak);
+  RegisterOperation('or', rtBoolean, rtBoolean, 2, 2, GetDataType('boolean'), 'bor $0, $1' + sLineBreak);
+
+  //pointer operations returning bool
+  RegisterOperation('=', rtPointer, rtPointer, 2, 2, GetDataType('boolean'), 'ife $0, $1' + sLineBreak);
+  RegisterOperation('<>', rtPointer, rtPointer, 2, 2, GetDataType('boolean'), 'ifn $0, $1' + sLineBreak);
 end;
 
 procedure TCompiler.RegisterType(AName: string; ASize: Integer;
-  APrimitive: TDataPrimitive);
+  APrimitive: TRawType; ABaseType: TDataType);
 begin
-  FCurrentUnit.SubElements.Add(TDataType.Create(AName, ASize, APrimitive));
+  FCurrentUnit.SubElements.Add(TDataType.Create(AName, ASize, APrimitive, ABaseType));
 end;
 
 end.

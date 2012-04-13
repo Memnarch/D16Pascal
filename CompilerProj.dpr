@@ -22,7 +22,9 @@ uses
   Loops in 'Loops.pas',
   ProcCall in 'ProcCall.pas',
   ASMBlock in 'ASMBlock.pas',
-  D16Assembler in 'D16Assembler.pas';
+  D16Assembler in 'D16Assembler.pas',
+  Operation in 'Operation.pas',
+  Operations in 'Operations.pas';
 
 {$R *.res}
 

@@ -9,7 +9,6 @@ type
   TASMBlock = class(TCodeElement)
   private
     FSource: string;
-  published
   public
     function GetDCPUSource(): string; override;
     property Source: string read FSource write FSource;

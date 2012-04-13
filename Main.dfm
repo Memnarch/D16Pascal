@@ -3,7 +3,7 @@ object Form2: TForm2
   Top = 0
   Caption = 'D16-Pascal Compiler by Memnarch'
   ClientHeight = 230
-  ClientWidth = 506
+  ClientWidth = 696
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -16,7 +16,7 @@ object Form2: TForm2
   object Log: TSynEdit
     Left = 0
     Top = 73
-    Width = 506
+    Width = 696
     Height = 157
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
@@ -34,13 +34,13 @@ object Form2: TForm2
     ReadOnly = True
     TabWidth = 2
     WantTabs = True
-    ExplicitHeight = 604
+    ExplicitWidth = 506
   end
   object ToolBar1: TToolBar
     AlignWithMargins = True
     Left = 3
     Top = 3
-    Width = 500
+    Width = 690
     Height = 38
     AutoSize = True
     ButtonHeight = 38
@@ -48,6 +48,7 @@ object Form2: TForm2
     Caption = 'ToolBar1'
     Images = ToolImages
     TabOrder = 1
+    ExplicitWidth = 500
     object btnCompile: TToolButton
       Left = 0
       Top = 0
@@ -58,11 +59,12 @@ object Form2: TForm2
   object Panel1: TPanel
     Left = 0
     Top = 44
-    Width = 506
+    Width = 696
     Height = 29
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 2
+    ExplicitWidth = 506
     object cbOptimize: TCheckBox
       Left = 3
       Top = 3
@@ -80,7 +82,7 @@ object Form2: TForm2
     Left = 248
     Top = 120
     Bitmap = {
-      494C010101000800340020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010101000800380020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
