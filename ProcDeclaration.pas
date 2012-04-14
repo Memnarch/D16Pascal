@@ -17,9 +17,10 @@ type
   public
     constructor Create(AName: string); reintroduce;
     procedure AddResultValue();
-    procedure AddLocal(AVAr: TVarDeclaration);
+    procedure AddLocal(AVar: TVarDeclaration);
     function GetDCPUSource(): string; override;
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
+    function GetCurrentWordSpaceOfLocals(): Integer;
     property IsFunction: Boolean read GetIsFunction;
     property ResultType: TDataType read FResultType write FResultType;
     property Parameters: TObjectList<TCodeElement> read FParameters;
@@ -49,7 +50,7 @@ begin
   end;
   for LElement in FLocals do
   begin
-    TVarDeclaration(LElement).ParamIndex := TVarDeclaration(LElement).ParamIndex  - 1;
+    TVarDeclaration(LElement).ParamIndex := TVarDeclaration(LElement).ParamIndex  - AVar.DataType.GetRamWordSize();
   end;
   AVar.ParamIndex := -1;
   FLocals.Add(AVar);
@@ -67,6 +68,17 @@ begin
   FLocals := TObjectList<TCodeElement>.Create();
 end;
 
+function TProcDeclaration.GetCurrentWordSpaceOfLocals: Integer;
+var
+  LElement: TCodeElement;
+begin
+  Result := 0;
+  for LElement in FLocals do
+  begin
+    Result := Result + TVarDeclaration(LElement).DataType.GetRamWordSize();
+  end;
+end;
+
 function TProcDeclaration.GetDCPUSource: string;
 begin
   Result := ':' + Name + sLineBreak;
@@ -75,7 +87,7 @@ begin
     Result := Result + 'set push, j' + sLineBreak;
     if FLocals.Count > 0 then
     begin
-      Result := Result + 'sub sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+      Result := Result + 'sub sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()) + sLineBreak;
     end;
     Result := Result + 'set j, sp' + sLineBreak;
   end;
@@ -90,7 +102,7 @@ begin
     Result := Result + 'set sp, j' + sLineBreak;
     if FLocals.Count > 0 then
     begin
-      Result := Result + 'add sp, ' + IntToStr(FLocals.Count) + sLineBreak;
+      Result := Result + 'add sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()) + sLineBreak;
     end;
     Result := Result + 'set j, pop' + sLineBreak;
   end;

@@ -251,8 +251,11 @@ begin
       continue;
     end;
     SplitLine(ALines.Strings[i+1], LOpB, LTargetB, LSourceB);
-    if SameText(LOpA, 'set') and SameText(LOpA, LOpB)
-      and (SameText(LTargetA, LSourceB) or SameText('['+LTargetA+']', LSourceB)) then
+    if (SameText(LOpA, 'set') and SameText(LOpA, LOpB)
+      and (SameText(LTargetA, LSourceB) or SameText('['+LTargetA+']', LSourceB)))
+      and not(StartsText('[', LSourceA) and StartsText('[', LSourceB) and not(StartsText('[', LTargetA)))
+
+    then
     begin
       ALines.Strings[i] := '';
       if not SameText(LTargetB, LSourceA) then

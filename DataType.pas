@@ -52,10 +52,10 @@ var
 begin
   if RawType = rtArray then
   begin
-    LArSize := 0;
+    LArSize := 1;
     for LDimSize in FDimensions do
     begin
-      LArSize := LArSize + LDimSize;
+      LArSize := LArSize * LDimSize;
     end;
     Result := LArSize * BaseType.GetRamWordSize();
   end

@@ -4,21 +4,22 @@ uses
 	Types, Sys, ScreenIO;
 
 type
-	TTestArray = array[10] of Word;
+	TTestArray = array[12] of array[32] of Word;
 	PTestArray = ^TTestArray;
 	
 var
 	msgHello: string = 'Hello World';
 	msgMulti: string = 'Multiline\nText';
 	msgKey: string = 'Key Test:';
-	PTest: TTestArray;
+	PTest: PTestArray = 0x8000;
 	LVar: Word = 5;
 	
 begin
 	CLS(0);
 	PrintLn(msgKey);
 	PrintHex(0xF23c);
-	while true do
+	PrintChar(PTest[1][2] and 0xFF);
+	while not false do
 	begin
 		PrintChar(GetKey());
 		if KeyOffset >= 511 then

@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
-  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations;
+  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations, Factor;
 
 type
   TMessageLevel = (mlNone, mlWarning, mlError, mlFatal);
@@ -51,10 +51,13 @@ type
     procedure ParseCondition(AScope: TObjectList<TCodeElement>);
     procedure ParseWhileLoop(AScope: TObjectList<TCodeElement>);
     procedure ParseRepeatLoop(AScope: TObjectList<TCodeElement>);
-    function ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False): TDataType;
+    function ParseRelation(AScope: TObjectList<TCodeElement>; ATryInverse: Boolean = False): TDataType;
     function ParseExpression(AScope: TObjectList<TCodeElement>): TDataType;
     function ParseTerm(AScope: TObjectList<TCodeElement>): TDataType;
     function ParseFactor(AScope: TObjectList<TCodeElement>): TDataType;
+    function ParseConstantFactor(AFactor: TFactor): TDataType;
+    function ParseArrayModifiers(AType: TDataType; AScope: TObjectList<TCodeElement>;
+      AMaxList: TList<Integer>):TDataType;
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
@@ -81,7 +84,7 @@ const
 implementation
 
 uses
-  StrUtils, Relation, Expression, Term, Factor, Assignment, Condition, Loops, ProcCall, Optimizer;
+  StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, Optimizer;
 
 { TCompiler }
 
@@ -304,6 +307,30 @@ begin
   end;
 end;
 
+function TCompiler.ParseArrayModifiers(AType: TDataType;
+  AScope: TObjectList<TCodeElement>; AMaxList: TList<Integer>): TDataType;
+var
+  i: Integer;
+  LResult: TDataType;
+begin
+  Result := AType;
+  while Result.RawType = rtArray do
+  begin
+    for i := 0 to Result.Dimensions.Count - 1 do
+    begin
+      FLexer.GetToken('[');
+      LResult := ParseRelation(AScope, false);
+      AMaxList.Add(Result.Dimensions.Items[i]);
+      if LResult.RawType <> rtUInteger then
+      begin
+        Fatal('The result of a relation in an array modifier must be an unsigned integer');
+      end;
+      FLexer.GetToken(']');
+    end;
+    Result := Result.BaseType;
+  end;
+end;
+
 procedure TCompiler.ParseASMBlock(AScope: TObjectList<TCodeElement>);
 var
   LToken: TToken;
@@ -392,6 +419,30 @@ begin
   FLexer.GetToken(';');
 end;
 
+function TCompiler.ParseConstantFactor(AFactor: TFactor): TDataType;
+var
+  LTempID, LContent, LData: string;
+begin
+  if FLexer.PeekToken.IsType(ttCharLiteral) then
+  begin
+    Result := GetDataType('string');
+    LTempID := FCurrentUnit.GetUniqueID('str');
+    AFactor.Value := LTempID;
+    LContent := FLexer.GetToken().Content;
+    LData := ':' + LTempID + ' dat "' + StringReplace(LContent,'\n', '",10,"',[]) + '"';
+    if Length(LContent) > 1 then
+    begin
+      LData := LData + ', 0x0';
+    end;
+    FCurrentUnit.FooterSource.Add(LData);
+  end
+  else
+  begin
+    AFactor.Value := FLexer.GetToken().Content;
+    Result := GetDataType('word');
+  end;
+end;
+
 procedure TCompiler.ParseConsts;
 begin
 
@@ -422,13 +473,13 @@ end;
 function TCompiler.ParseFactor(AScope: TObjectList<TCodeElement>): TDataType;
 var
   LFactor: TFactor;
-  LRelation: TRelation;
   LInverse: Boolean;
-  LTempID, LContent, LData: string;
   LOverride: TDataType;
 begin
   LInverse := False;
   LOverride := nil;
+  LFactor := TFactor.Create();
+  AScope.Add(LFactor);
   while FLexer.PeekToken.IsContent('not') do
   begin
     FLexer.GetToken('not');
@@ -444,107 +495,102 @@ begin
   if FLexer.PeekToken.IsContent('(') then
   begin
     FLexer.GetToken('(');
-    Result := ParseRelation(AScope, LInverse);
-    LRelation := TRelation(AScope.Items[AScope.Count - 1]);
+    Result := ParseRelation(LFactor.SubElements, LInverse);
+    if Result.RawType = rtBoolean then
+    begin
+      LInverse := False; //in case it was true when parsing the relation, the value of the relation is already inversed
+    end;
     if Assigned(LOverride) then
     begin
       Result := LOverride;
     end;
     FLexer.GetToken(')');
-    if FLexer.PeekToken.IsContent('^') and Assigned(LOverride) then
-    begin
-      FLexer.GetToken('^');
-      LRelation.Dereference := True;
-      Result := Result.BaseType;
-    end;
   end
   else
   begin
     if Assigned(GetElement(FLexer.PeekToken.Content, TProcDeclaration)) then
     begin
-      Result := ParseRoutineCall(AScope, False);
+      Result := ParseRoutineCall(LFactor.SubElements, False);
     end
     else
     begin
-      LFactor := TFactor.Create();
-      LFactor.Inverse := LInverse;
-      AScope.Add(LFactor);
-      if FLexer.PeekToken.IsType(ttNumber) then
+      if FLexer.PeekToken.IsType(ttNumber) or FLexer.PeekToken.IsType(ttCharLiteral) then
       begin
-        LFactor.Value := FLexer.GetToken().Content;
-        Result := GetDataType('word');
+        Result := ParseConstantFactor(LFactor);
       end
       else
       begin
-        if FLexer.PeekToken.IsType(ttCharLiteral) then
+        if FLexer.PeekToken.IsContent('@') then
         begin
-          Result := GetDataType('string');
-          LTempID := FCurrentUnit.GetUniqueID('str');
-          LFactor.Value := LTempID;
-          LContent := FLexer.GetToken().Content;
-          LData := ':' + LTempID + ' dat "' + StringReplace(LContent,'\n', '",10,"',[]) + '"';
-          if Length(LContent) > 1 then
-          begin
-            LData := LData + ', 0x0';
-          end;
-          FCurrentUnit.FooterSource.Add(LData);
-        end
-        else
-        begin
-          if FLexer.PeekToken.IsContent('@') then
-          begin
-            FLexer.GetToken('@');
-            LFactor.GetAdress := True;
-          end;
-          LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
-          Result := LFactor.VarDeclaration.DataType;
-          if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
-          begin
-            Fatal('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
-          end;
+          FLexer.GetToken('@');
+          LFactor.GetAdress := True;
         end;
-      end;
-      if FLexer.PeekToken.IsContent('^') then
-      begin
-        FLexer.GetToken();
-        LFactor.Dereference := True;
-        if LFactor.GetAdress then
+        LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+        Result := LFactor.VarDeclaration.DataType;
+        if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
         begin
-          Fatal('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
+          Fatal('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
         end;
-      end;
-      if LFactor.Dereference then
-      begin
-        Result := Result.BaseType;
-      end;
-      if LFactor.GetAdress then
-      begin
-        Result := GetDataType('pointer');
       end;
     end;
   end;
+  LFactor.Inverse := LInverse;
+  if FLexer.PeekToken.IsContent('^') then
+  begin
+    FLexer.GetToken();
+    LFactor.Dereference := True;
+    if LFactor.GetAdress then
+    begin
+      Fatal('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
+    end;
+  end;
+  if LFactor.Dereference then
+  begin
+    Result := Result.BaseType;
+  end;
+  if FLexer.PeekToken.IsContent('[') then
+  begin
+    if (Result.RawType = rtPointer) and (Result.BaseType.RawType = rtArray) then
+    begin
+      Result := Result.BaseType;
+    end;
+    if (Result.RawType = rtArray) then
+    begin
+      Result := ParseArrayModifiers(Result, LFactor.Modifiers, LFactor.ModifierMax);
+    end;
+  end;
+  if LFactor.GetAdress then
+  begin
+    Result := GetDataType('pointer');
+  end;
 end;
 
-function TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; AInverse: Boolean = False): TDataType;
+function TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; ATryInverse: Boolean = False): TDataType;
 var
   LRelation: TRelation;
   LLastResult: TDataType;
   LOperator: string;
   LOperation: TOperation;
 begin
+  //tryinverse indicates, that wem may already inverse the result if we can
+  //we can inverse the result, when the result is of type bool
+  //if its not bool, it might be, that the result is going to be dereferenced too
+  //in this case we dont inverse here, which is then handled by the top layer(parsefactor)
+  //this is required to not mix up the order.
+  //first dereference THEN inverse it. Always inversing at this position might screw this
+  //as we dereference AFTER inversing if this is not a bool
   LRelation := TRelation.Create();
-  LRelation.Inverse := AInverse;
   AScope.Add(LRelation);
   Result := ParseExpression(LRelation.SubElements);
   if FLexer.PeekToken.IsType(ttRelOp) then
   begin
     LOperator := FLexer.GetToken().Content;
-    //LRelation.Operators.Add(LOperation);
     LLastResult := Result;
     Result := ParseExpression(LRelation.SubElements);
     LOperation := GetOperation(LOperator, LLastResult, Result);
     LRelation.Operations.Add(LOperation);
     Result := LOperation.ResultType;
+    LRelation.Inverse := ATryInverse;//we may inverse here already, since since its not possible to dereference a bool value
   end;
 end;
 
@@ -581,7 +627,8 @@ begin
     LParamType := ParseRelation(LCall.Parameters);
     if  LParamType.RawType <> TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).DataType.RawType then
     begin
-      Fatal('Valuetype does not match with parameter type');
+      Fatal('Cannot assign ' + QuotedStr(LParamType.Name) +
+        ' to ' + QuotedStr(TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).Name));
     end;
 
     if i < LCall.ProcDeclaration.Parameters.Count - 1 then
@@ -665,6 +712,10 @@ begin
   begin
     FLexer.GetToken(':');
     LProc.ResultType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
+    if LProc.ResultType.RawType = rtArray then
+    begin
+      Fatal('You can not use a static array as resulttype');
+    end;
   end;
   FLexer.GetToken(';');
   if FLexer.PeekToken.IsContent('var') then
