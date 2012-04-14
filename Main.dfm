@@ -11,6 +11,7 @@ object Form2: TForm2
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
   object Log: TSynEdit
@@ -34,7 +35,6 @@ object Form2: TForm2
     ReadOnly = True
     TabWidth = 2
     WantTabs = True
-    ExplicitWidth = 506
   end
   object ToolBar1: TToolBar
     AlignWithMargins = True
@@ -48,7 +48,6 @@ object Form2: TForm2
     Caption = 'ToolBar1'
     Images = ToolImages
     TabOrder = 1
-    ExplicitWidth = 500
     object btnCompile: TToolButton
       Left = 0
       Top = 0
@@ -64,7 +63,6 @@ object Form2: TForm2
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 2
-    ExplicitWidth = 506
     object cbOptimize: TCheckBox
       Left = 3
       Top = 3
@@ -82,7 +80,7 @@ object Form2: TForm2
     Left = 248
     Top = 120
     Bitmap = {
-      494C010101000800380020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101010008003C0020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

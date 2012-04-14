@@ -32,7 +32,7 @@ var
 
 implementation
 uses
-  Optimizer;
+  Optimizer, HeaderMessage;
 
 {$R *.dfm}
 
@@ -72,18 +72,19 @@ begin
 end;
 
 procedure TForm2.FormCreate(Sender: TObject);
-var
-  LCompiler: TCompiler;
+//var
+//  LCompiler: TCompiler;
 begin
-  Log.Clear;
-  Log.Gutter.ShowLineNumbers := True;
-  LCompiler := TCompiler.Create();
-  LCompiler.OnMessage := OnMessage;
-  LCompiler.SearchPath.Add('E:\Git\D16Pascal\DemoSource\');
-  LCompiler.CompileFile('Demo.pas');
-  Log.Lines.Text := Trim(LCompiler.GetDCPUSource());
-  RefreshTargetIdent(Log.Lines);
-  LCompiler.Free;
+  Log.Text := CWelcomeMessage;
+//  Log.Clear;
+//  Log.Gutter.ShowLineNumbers := True;
+//  LCompiler := TCompiler.Create();
+//  LCompiler.OnMessage := OnMessage;
+//  LCompiler.SearchPath.Add('E:\Git\D16Pascal\DemoSource\');
+//  LCompiler.CompileFile('Demo.pas');
+//  Log.Lines.Text := Trim(LCompiler.GetDCPUSource());
+//  RefreshTargetIdent(Log.Lines);
+//  LCompiler.Free;
 end;
 
 procedure TForm2.OnMessage(AMessage, AUnit: string; ALine: Integer;

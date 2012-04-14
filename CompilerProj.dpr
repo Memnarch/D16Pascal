@@ -24,7 +24,8 @@ uses
   ASMBlock in 'ASMBlock.pas',
   D16Assembler in 'D16Assembler.pas',
   Operation in 'Operation.pas',
-  Operations in 'Operations.pas';
+  Operations in 'Operations.pas',
+  HeaderMessage in 'HeaderMessage.pas';
 
 {$R *.res}
 
