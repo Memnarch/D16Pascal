@@ -16,7 +16,7 @@ type
     FDimensions: TList<Integer>;
   public
     constructor Create(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
-      ABaseType: TDataType = nil); reintroduce;
+      ABaseType: TDataType = nil);
     function GetRamWordSize(): Integer;
     property Size: Integer read FSize;
     property RawType: TRawType read FRawType;
