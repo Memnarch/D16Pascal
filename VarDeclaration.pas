@@ -12,7 +12,7 @@ type
     FParamIndex: Integer;
     FDefaultValue: string;
   public
-    constructor Create(AName: string; AType: TDataType); reintroduce;
+    constructor Create(AName: string; AType: TDataType);
     function GetAccessIdentifier(): string;
     function GetDCPUSource(): string; override;
     function IsParameter(): Boolean;

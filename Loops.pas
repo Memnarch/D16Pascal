@@ -10,7 +10,7 @@ type
   private
     FRelation: TObjectList<TCodeElement>;
   public
-    constructor Create(); reintroduce;
+    constructor Create();
     destructor Destroy(); override;
     property Relation: TObjectList<TCodeElement> read FRelation;
   end;

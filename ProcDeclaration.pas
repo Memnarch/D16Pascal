@@ -15,7 +15,7 @@ type
     FLocals: TObjectList<TCodeElement>;
     function GetIsFunction: Boolean;
   public
-    constructor Create(AName: string); reintroduce;
+    constructor Create(const AName: string);
     procedure AddResultValue();
     procedure AddLocal(AVar: TVarDeclaration);
     function GetDCPUSource(): string; override;

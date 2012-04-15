@@ -6,3 +6,5 @@
 *.dcu
 *.asm
 *.rar
+*.bak
+thumbs.db

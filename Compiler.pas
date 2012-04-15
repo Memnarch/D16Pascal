@@ -64,7 +64,7 @@ type
     function GetPathForFile(AFile: string): string;
   public
     constructor Create();
-    destructor Destroy(); reintroduce;
+    destructor Destroy(); override;
     function GetDCPUSource(): string;
     procedure CompileFile(AFile: string);
     procedure CompilerSource(ASource: string);
