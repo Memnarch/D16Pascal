@@ -12,7 +12,7 @@ type
     FInitSection: TObjectList<TCodeElement>;
     FLexer: TLexer;
   public
-    constructor Create(AName: string); reintroduce;
+    constructor Create(AName: string); 
     destructor Destroy(); override;
     function GetDCPUSource(): string; override;
     property FooterSource: TStringList read FFooterSource;

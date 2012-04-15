@@ -10,7 +10,7 @@ type
   private
     FOperations: TObjectList<TOperation>;
   public
-    constructor Create(); reintroduce;
+    constructor Create();
     property Operations: TObjectList<TOperation> read FOperations;
   end;
 

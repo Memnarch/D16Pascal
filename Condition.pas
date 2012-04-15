@@ -11,7 +11,7 @@ type
     FElseElements: TObjectList<TCodeElement>;
     FRelation: TObjectList<TCodeElement>;
   public
-    constructor Create(); reintroduce;
+    constructor Create();
     destructor Destroy(); override;
     function GetDCPUSource(): string; override;
     property ElseElements: TObjectList<TCodeElement> read FElseElements;
