@@ -11,7 +11,7 @@ type
     FParameters: TObjectList<TCodeElement>;
     FProcDeclaration: TProcDeclaration;
   public
-    constructor Create(); reintroduce;
+    constructor Create(); 
     destructor Destroy(); override;
     function GetDCPUSource(): string; override;
     function GetWordSizeOfLocals(): Integer;

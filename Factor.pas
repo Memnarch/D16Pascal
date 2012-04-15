@@ -19,7 +19,7 @@ type
     function GetModifierSource(): string;
     function GetMultiplierForArrayModifier(AIndex: Integer): Integer;
   public
-    constructor Create(); reintroduce;
+    constructor Create(); 
     destructor Destroy(); override;
     function IsConstant(): Boolean;
     function GetDCPUSource(): string; override;
