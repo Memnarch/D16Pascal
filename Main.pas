@@ -32,7 +32,7 @@ var
 
 implementation
 uses
-  Optimizer, HeaderMessage;
+ Optimizer, HeaderMessage;
 
 {$R *.dfm}
 

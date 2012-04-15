@@ -11,6 +11,8 @@ type
     FDataType: TDataType;
     FParamIndex: Integer;
     FDefaultValue: string;
+    FID: string;
+    FIsConstant: Boolean;
   public
     constructor Create(AName: string; AType: TDataType);
     function GetAccessIdentifier(): string;
@@ -20,6 +22,7 @@ type
     property DataType: TDataType read FDataType;
     property ParamIndex: Integer read FParamIndex write FParamIndex;
     property DefaultValue: string read FDefaultValue write FDefaultValue;
+    property IsConst: Boolean read FIsConstant write FIsConstant;
   end;
 
 implementation
@@ -35,6 +38,7 @@ begin
   FDataType := AType;
   FParamIndex := 0;
   FDefaultValue := '0x0';
+  FID := GetUniqueID();
 end;
 
 function TVarDeclaration.GetAccessIdentifier: string;
@@ -79,7 +83,7 @@ begin
     end
     else
     begin
-      Result := Name;
+      Result := Name + FID;
     end;
   end;
 end;
@@ -88,7 +92,7 @@ function TVarDeclaration.GetDCPUSource: string;
 var
   i, LSize: Integer;
 begin
-  Result := ':' + Name + ' dat ';
+  Result := ':' + GetAccessIdentifier() + ' dat ';
   if DataType.RawType = rtArray then
   begin
     LSize := DataType.GetRamWordSize();

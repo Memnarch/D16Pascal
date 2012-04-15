@@ -181,7 +181,7 @@ end;
 
 function TFactor.IsConstant: Boolean;
 begin
-  Result := not Assigned(FVarDeclaration);
+  Result := (not Assigned(FVarDeclaration)) and (SubElements.Count = 0);
 end;
 
 end.

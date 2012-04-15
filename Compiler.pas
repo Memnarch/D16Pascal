@@ -40,17 +40,20 @@ type
     procedure ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseVars(AScope: TObjectList<TCodeElement>);
     procedure ParseVarDeclaration(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True;
-      AAsParameter: Boolean = False; AAsLocal: Boolean = False);
+      AAsParameter: Boolean = False; AAsLocal: Boolean = False; AAsConst: Boolean = False);
     procedure ParseConsts(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineParameters(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineLocals(AProc: TProcDeclaration);
     procedure ParseRoutineContent(AScope: TObjectList<TCodeElement>);
     function ParseRoutineCall(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True): TDataType;
-    function ParseAssignment(AScope: TObjectList<TCodeElement>): TDataType;
+    function ParseAssignment(AScope: TObjectList<TCodeElement>; AIncludeEndmark: Boolean = True): TDataType;
     procedure ParseCondition(AScope: TObjectList<TCodeElement>);
     procedure ParseWhileLoop(AScope: TObjectList<TCodeElement>);
     procedure ParseRepeatLoop(AScope: TObjectList<TCodeElement>);
+    procedure ParseForLoop(AScope: TObjectList<TCodeElement>);
+    procedure ParseCaseStatement(AScope: TObjectList<TCodeElement>);
+    procedure ParseCase(AScope: TObjectList<TCodeElement>);
     function ParseRelation(AScope: TObjectList<TCodeElement>; ATryInverse: Boolean = False): TDataType;
     function ParseExpression(AScope: TObjectList<TCodeElement>): TDataType;
     function ParseTerm(AScope: TObjectList<TCodeElement>): TDataType;
@@ -84,7 +87,7 @@ const
 implementation
 
 uses
-  StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, Optimizer;
+  StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
 
 { TCompiler }
 
@@ -174,6 +177,7 @@ end;
 
 constructor TCompiler.Create;
 begin
+  inherited;
   FUnits := TObjectList<TPascalUnit>.Create();
   FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
@@ -335,6 +339,8 @@ procedure TCompiler.ParseASMBlock(AScope: TObjectList<TCodeElement>);
 var
   LToken: TToken;
   LBlock: TASMBlock;
+  LContent: string;
+  LVar: TVarDeclaration;
 begin
   LBlock := TASMBlock.Create('');
   AScope.Add(LBlock);
@@ -342,7 +348,21 @@ begin
   while not (FLexer.PeekToken.IsContent('end') and FLexer.AHeadToken.IsContent(';')) do
   begin
     LToken := FLexer.GetToken();
-    LBlock.Source := LBlock.Source + LToken.Content;
+    LContent := LToken.Content;
+    if LToken.IsType(ttIdentifier) and (AnsiIndexText(LContent, ['a', 'b', 'c', 'x', 'y', 'z', 'i', 'j']) < 0) then
+    begin
+      LVar := TVarDeclaration(GetElement(LContent, TVarDeclaration));
+      if Assigned(LVar) then
+      begin
+        LContent := LVar.GetAccessIdentifier();
+        if ((LVar.ParamIndex < 1) or (LVar.ParamIndex > 3)) and (LVar.IsParameter or LVar.IsLocal)
+        and (not FLexer.PeekToken.IsContent(']')) then
+        begin
+          LContent := '[' + LContent + ']';
+        end;
+      end;
+    end;
+    LBlock.Source := LBlock.Source + LContent;
     if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)
         or (AnsiIndexText(LToken.Content, ['and', 'or', 'mod']) >= 0))
       and (not (FLexer.PeekToken.IsContent(']') or FLexer.PeekToken.IsType(ttTermOp))) then
@@ -358,7 +378,7 @@ begin
   FLexer.GetToken(';');
 end;
 
-function TCompiler.ParseAssignment(AScope: TObjectList<TCodeElement>): TDataType;
+function TCompiler.ParseAssignment(AScope: TObjectList<TCodeElement>; AIncludeEndmark: Boolean = True): TDataType;
 var
   LAssignment: TAssignment;
   LRelType: TDataType;
@@ -372,6 +392,10 @@ begin
     FLexer.GetToken('(');
   end;
   LAssignment.TargetVar := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+  if LAssignment.TargetVar.IsConst then
+  begin
+    Fatal('Cannot assign to a const value');
+  end;
   AScope.Add(LAssignment);
   if FLexer.PeekToken.IsContent('^') then
   begin
@@ -390,11 +414,80 @@ begin
   end;
   FLexer.GetToken(':=');
   LRelType := ParseRelation(LAssignment.SubElements);
-  FLexer.GetToken(';');
+  if AIncludeEndmark then
+  begin
+    FLexer.GetToken(';');
+  end;
   if LRelType.RawType <> Result.RawType then
   begin
     Fatal('Cannot assign ' + QuotedStr(LRelType.Name) + ' to ' + QuotedStr(Result.Name));
   end;
+end;
+
+procedure TCompiler.ParseCase(AScope: TObjectList<TCodeElement>);
+var
+  LCase: TCase;
+  LFactor: TFactor;
+  LRepeat: Boolean;
+begin
+  LCase := TCase.Create();
+  AScope.Add(LCase);
+  LRepeat := False;
+  while (not FLexer.PeekToken.IsContent(':')) or LRepeat do
+  begin
+    LRepeat := False;
+    if ParseFactor(LCase.ConstValues).RawType <> rtUInteger then
+    begin
+      Fatal('value must be of type unsigned Integer');
+    end;
+    LFactor := TFactor(LCase.ConstValues.Items[LCase.ConstValues.Count-1]);
+    if (not LFactor.IsConstant) and ((Assigned(LFactor.VarDeclaration) and (not LFactor.VarDeclaration.IsConst))) then
+    begin
+      Fatal('Value must be of type const');
+    end;
+    if (LFactor.SubElements.Count > 0) or LFactor.Inverse or LFactor.GetAdress or LFactor.Dereference then
+    begin
+      Fatal('illegal statement');
+    end;
+    if FLexer.PeekToken.IsContent(',') then
+    begin
+      FLexer.GetToken(',');
+      LRepeat := True;
+    end;
+  end;
+  FLexer.GetToken(':');
+  FLexer.GetToken('begin');
+  ParseRoutineContent(LCase.SubElements);
+  FLexer.GetToken('end');
+  FLexer.GetToken(';');
+end;
+
+procedure TCompiler.ParseCaseStatement(AScope: TObjectList<TCodeElement>);
+var
+  LStatement: TCaseStatement;
+begin
+  FLexer.GetToken('case');
+  LStatement := TCaseStatement.Create();
+  AScope.Add(LStatement);
+  if ParseRelation(LStatement.Relation).RawType <> rtUInteger then
+  begin
+    Fatal('Relation of Case requires returntype of unsigned integer');
+  end;
+  FLexer.GetToken('of');
+  while (not FLexer.PeekToken.IsContent('end')) and (not FLexer.PeekToken.IsContent('else')) do
+  begin
+    ParseCase(LStatement.Cases);
+  end;
+  if FLexer.PeekToken.IsContent('else') then
+  begin
+    FLexer.GetToken('else');
+    FLexer.GetToken('begin');
+    ParseRoutineContent(LStatement.ElseCase);
+    FLexer.GetToken('end');
+    FLexer.GetToken(';');
+  end;
+  FLexer.GetToken('end');
+  FLexer.GetToken(';');
 end;
 
 procedure TCompiler.ParseCondition(AScope: TObjectList<TCodeElement>);
@@ -445,7 +538,11 @@ end;
 
 procedure TCompiler.ParseConsts;
 begin
-
+  FLexer.GetToken('const');
+  while not FLexer.PeekToken.IsType(ttReserved) do
+  begin
+    ParseVarDeclaration(AScope, True, False, False, True);
+  end;
 end;
 
 function TCompiler.ParseExpression(AScope: TObjectList<TCodeElement>): TDataType;
@@ -565,6 +662,29 @@ begin
   end;
 end;
 
+procedure TCompiler.ParseForLoop(AScope: TObjectList<TCodeElement>);
+var
+  LFor: TForLoop;
+begin
+  LFor := TForLoop.Create();
+  AScope.Add(LFor);
+  FLexer.GetToken('for');
+  if ParseAssignment(LFor.Assignment, False).RawType <> rtUInteger then
+  begin
+    Fatal('assignment must be of type unsigned integer');
+  end;
+  FLexer.GetToken('to');
+  if ParseRelation(LFor.Relation).RawType <> rtUInteger then
+  begin
+    Fatal('Result of relation must be of type unsigned integer');
+  end;
+  FLexer.GetToken('do');
+  FLexer.GetToken('begin');
+  ParseRoutineContent(LFor.SubElements);
+  FLexer.GetToken('end');
+  FLexer.GetToken(';');
+end;
+
 function TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; ATryInverse: Boolean = False): TDataType;
 var
   LRelation: TRelation;
@@ -652,7 +772,7 @@ begin
     case FLexer.PeekToken.TokenType of
       ttIdentifier, ttReserved:
       begin
-        case AnsiIndexText(FLexer.PeekToken.Content, ['if', 'while', 'repeat', 'asm']) of
+        case AnsiIndexText(FLexer.PeekToken.Content, ['if', 'while', 'repeat', 'asm', 'for', 'case']) of
           0:
           begin
             ParseCondition(AScope);
@@ -668,6 +788,16 @@ begin
           3:
           begin
             ParseASMBlock(AScope);
+          end;
+
+          4:
+          begin
+            ParseForLoop(AScope);
+          end;
+
+          5:
+          begin
+            ParseCaseStatement(AScope);
           end
 
           else
@@ -889,7 +1019,7 @@ begin
   end;
   FLexer.GetToken(':');
   LType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
-  if AIncludeEndMark and (not (AAsParameter or AAsLocal)) and (FLexer.PeekToken.IsContent('=')) then
+  if AIncludeEndMark and (not (AAsParameter or AAsLocal)) and (FLexer.PeekToken.IsContent('=') or AAsConst) then
   begin
     FLexer.GetToken();
     if LType.RawType = rtString then
@@ -916,6 +1046,7 @@ begin
   for LName in LNames do
   begin
     LVarDec := TVarDeclaration.Create(LName, LType);
+    LVarDec.IsConst := AAsConst;
     LVarDec.DefaultValue := LDef;
     if AAsParameter or AAsLocal then
     begin

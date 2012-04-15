@@ -175,7 +175,7 @@ begin
   begin
     SplitLine(ALines.Strings[i], LOpA, LTargetA, LSourceA);
     SplitLine(ALines.Strings[i+1], LOpB, LTargetB, LSourceB);
-    if SameText(LOpA, 'set') and (not SameText(LOpB, 'set')) then
+    if SameText(LOpA, 'set') and (not SameText(LOpB, 'set')) and (not SameText(LSourceA, 'pop')) then
     begin
       if SameText(LTargetA, LSourceB) then
       begin

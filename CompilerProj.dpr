@@ -25,7 +25,8 @@ uses
   D16Assembler in 'D16Assembler.pas',
   Operation in 'Operation.pas',
   Operations in 'Operations.pas',
-  HeaderMessage in 'HeaderMessage.pas';
+  HeaderMessage in 'HeaderMessage.pas',
+  CaseState in 'CaseState.pas';
 
 {$R *.res}
 

@@ -13,12 +13,30 @@ var
 	msgKey: string = 'Key Test:';
 	PTest: PTestArray = 0x8000;
 	LVar: Word = 5;
+	k, m: Word;
+	
+const
+	IsFive: Word = 5;
 	
 begin
 	CLS(0);
 	PrintLn(msgKey);
 	PrintHex(0xF23c);
-	PrintChar(PTest[1][2] and 0xFF);
+	case LVar + 1 of
+		1, 2:
+		begin
+			println('its 1 or 2');
+		end;
+		IsFive:
+		begin
+			println('its 5');
+		end;
+		
+		else
+		begin
+			println('its something else');
+		end;
+	end;
 	while not false do
 	begin
 		PrintChar(GetKey());

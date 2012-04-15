@@ -61,9 +61,9 @@ begin
   AddLocal(TVarDeclaration.Create('Result', ResultType));
 end;
 
-constructor TProcDeclaration.Create(AName: string);
+constructor TProcDeclaration.Create(const AName: string);
 begin
-  inherited;
+  inherited Create(AName);
   FParameters := TObjectList<TCodeElement>.Create();
   FLocals := TObjectList<TCodeElement>.Create();
 end;

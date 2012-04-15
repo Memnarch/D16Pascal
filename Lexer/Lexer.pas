@@ -280,7 +280,7 @@ end;
 procedure TLexer.ParseSource;
 begin
   FPos := 1;
-  FLine := 0;
+  FLine := 1;
   while FPos <= Length(FSource) do
   begin
     case GetChar of
