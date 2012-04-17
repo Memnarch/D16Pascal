@@ -32,13 +32,14 @@ var
 
 implementation
 uses
- Optimizer, HeaderMessage;
+ Optimizer, HeaderMessage, D16Assembler;
 
 {$R *.dfm}
 
 procedure TForm2.btnCompileClick(Sender: TObject);
 var
   LCompiler: TCompiler;
+  LAssembler: TD16Assembler;
   LMainPath, LSavePath: string;
   LFile: string;
   LOut: TStringList;
@@ -50,6 +51,7 @@ begin
   DoOptimization := cbOptimize.Checked;
   FErrors := 0;
   Log.Clear;
+  LAssembler := TD16Assembler.Create();
   LCompiler := TCompiler.Create();
   LCompiler.OnMessage := OnMessage;
   LOut := TStringList.Create();
@@ -64,10 +66,22 @@ begin
     LSavePath := LMainPath + ChangeFileExt(LFile, '.asm');
     LOut.SaveToFile(LSavePath);
     Log.Lines.Add('Saved to: ' + LSavePath);
+    try
+      Log.Lines.Add('Assembling...');
+      LAssembler.AssembleFile(LSavePath);
+      Log.Lines.Add('Assembled to: '  + ChangeFileExt(LSavePath, '.d16'));
+    except
+      on e: Exception do
+      begin
+        OnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+      end;
+    end;
+    LAssembler.SaveTo(ChangeFileExt(LSavePath, '.d16'));
   end;
   Log.Lines.Add('Errors: ' + IntToSTr(FErrors));
   Log.Lines.Add('finished');
   LCompiler.Free;
+  LAssembler.Free;
   LOut.Free;
 end;
 

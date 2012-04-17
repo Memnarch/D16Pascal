@@ -361,6 +361,13 @@ begin
           LContent := '[' + LContent + ']';
         end;
       end;
+    end
+    else
+    begin
+      if LToken.IsType(ttCharLiteral) then
+      begin
+        LContent := '"' + LContent + '"';
+      end;
     end;
     LBlock.Source := LBlock.Source + LContent;
     if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)

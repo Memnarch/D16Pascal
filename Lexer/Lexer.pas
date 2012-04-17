@@ -14,6 +14,7 @@ type
     FTokenIndex: Integer;
     FTokens: TObjectList<TToken>;
     FReserved: TStringList;
+    FSimpleTokensOnly: Boolean;
     procedure ParseSource();
     procedure ParseIdentifier();
     procedure ParseOperator();
@@ -36,6 +37,7 @@ type
     function AHeadToken(): TToken;
     property Tokens: TObjectList<TToken> read FTokens;
     property EOF: Boolean read GetEOF;
+    property SimpleTokensOnly: Boolean read FSimpleTokensOnly write FSimpleTokensOnly;
   end;
 
 implementation
@@ -54,6 +56,7 @@ constructor TLexer.Create;
 begin
   FTokens := TObjectList<TToken>.Create();
   FReserved := TStringList.Create();
+  FSimpleTokensOnly := False;
   InitReserved();
 end;
 
@@ -153,10 +156,12 @@ end;
 procedure TLexer.ParseCharLiteral;
 var
   LContent: string;
+  LCloseChar: Char;
 begin
+  LCloseChar := GetChar();
   NextChar();
   LContent := '';
-  while GetChar() <> '''' do
+  while GetChar() <> LCloseChar do
   begin
     LContent := LContent + GetChar();
     NextChar();
@@ -179,27 +184,34 @@ begin
     NextChar();
     LChar := GetChar();
   end;
-  if FReserved.IndexOf(LContent) < 0 then
+  if FSimpleTokensOnly then
   begin
-    if AnsiIndexText(LContent, ['and', 'mod', 'shl', 'shr']) >= 0 then
-    begin
-      NewToken(LContent, ttFacOp);
-    end
-    else
-    begin
-      if AnsiIndexText(LContent, ['or', 'xor']) >= 0 then
-      begin
-        NewToken(LContent, ttTermOp);
-      end
-      else
-      begin
-        NewToken(LContent, ttIdentifier);
-      end;
-    end;
+    NewToken(LContent, ttIdentifier);
   end
   else
   begin
-    NewToken(LContent, ttReserved);
+    if FReserved.IndexOf(LContent) < 0 then
+    begin
+      if AnsiIndexText(LContent, ['and', 'mod', 'shl', 'shr']) >= 0 then
+      begin
+        NewToken(LContent, ttFacOp);
+      end
+      else
+      begin
+        if AnsiIndexText(LContent, ['or', 'xor']) >= 0 then
+        begin
+          NewToken(LContent, ttTermOp);
+        end
+        else
+        begin
+          NewToken(LContent, ttIdentifier);
+        end;
+      end;
+    end
+    else
+    begin
+      NewToken(LContent, ttReserved);
+    end;
   end;
 end;
 
@@ -295,7 +307,7 @@ begin
         ParseNumber();
       end;
 
-      '''':
+      '''', '"':
       begin
         ParseCharLiteral();
       end;

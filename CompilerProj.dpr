@@ -26,7 +26,8 @@ uses
   Operation in 'Operation.pas',
   Operations in 'Operations.pas',
   HeaderMessage in 'HeaderMessage.pas',
-  CaseState in 'CaseState.pas';
+  CaseState in 'CaseState.pas',
+  Opcode in 'Opcode.pas';
 
 {$R *.res}
 
