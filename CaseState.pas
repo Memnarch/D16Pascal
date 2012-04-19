@@ -57,8 +57,6 @@ end;
 
 function TCaseStatement.GetDCPUSource: string;
 var
-  LLabel: string;
-  LCase: TCase;
   i: Integer;
 begin
   Result := OptimizeDCPUCode(Relation.Items[0].GetDCPUSource());

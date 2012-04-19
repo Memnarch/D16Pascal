@@ -16,8 +16,12 @@ type
     Panel1: TPanel;
     cbOptimize: TCheckBox;
     OpenDialog: TOpenDialog;
+    cbAssemble: TCheckBox;
+    cbModule: TCheckBox;
+    cbUseBigEndian: TCheckBox;
     procedure btnCompileClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure cbAssembleClick(Sender: TObject);
   private
     { Private declarations }
     FErrors: Integer;
@@ -66,23 +70,42 @@ begin
     LSavePath := LMainPath + ChangeFileExt(LFile, '.asm');
     LOut.SaveToFile(LSavePath);
     Log.Lines.Add('Saved to: ' + LSavePath);
-    try
-      Log.Lines.Add('Assembling...');
-      LAssembler.AssembleFile(LSavePath);
-      Log.Lines.Add('Assembled to: '  + ChangeFileExt(LSavePath, '.d16'));
-    except
-      on e: Exception do
-      begin
-        OnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+    if cbAssemble.Checked then
+    begin
+      try
+        Log.Lines.Add('Assembling...');
+        LAssembler.UseBigEdian := cbUseBigEndian.Checked;
+        if cbUseBigEndian.Checked then
+        begin
+          Log.Lines.Add('Using BigEndian');
+        end;
+        LAssembler.AssembleFile(LSavePath);
+        LAssembler.SaveTo(ChangeFileExt(LSavePath, '.d16'));
+        Log.Lines.Add('Assembled to: '  + ChangeFileExt(LSavePath, '.d16'));
+        if cbModule.Checked then
+        begin
+          LAssembler.SaveAsModuleTo(ChangeFileExt(LSavePath, '.d16m'));
+          Log.Lines.Add('Saved as module to: ' + ChangeFileExt(LSavePath, '.d16m'))
+        end;
+      except
+        on e: Exception do
+        begin
+          OnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+        end;
       end;
     end;
-    LAssembler.SaveTo(ChangeFileExt(LSavePath, '.d16'));
   end;
   Log.Lines.Add('Errors: ' + IntToSTr(FErrors));
   Log.Lines.Add('finished');
   LCompiler.Free;
   LAssembler.Free;
   LOut.Free;
+end;
+
+procedure TForm2.cbAssembleClick(Sender: TObject);
+begin
+  cbModule.Enabled := cbAssemble.Checked;
+  cbUseBigEndian.Enabled := cbAssemble.Checked;
 end;
 
 procedure TForm2.FormCreate(Sender: TObject);

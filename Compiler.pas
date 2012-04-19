@@ -370,12 +370,12 @@ begin
       end;
     end;
     LBlock.Source := LBlock.Source + LContent;
-    if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)
-        or (AnsiIndexText(LToken.Content, ['and', 'or', 'mod']) >= 0))
-      and (not (FLexer.PeekToken.IsContent(']') or FLexer.PeekToken.IsType(ttTermOp))) then
-    begin
+//    if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)
+//        or (AnsiIndexText(LToken.Content, ['and', 'or', 'mod']) >= 0))
+//      and (not (FLexer.PeekToken.IsContent(']') or FLexer.PeekToken.IsType(ttTermOp))) then
+//    begin
       LBlock.Source := LBlock.Source + ' ';
-    end;
+//    end;
     if LToken.FollowedByNewLine then
     begin
       LBlock.Source := LBlock.Source + sLineBreak;

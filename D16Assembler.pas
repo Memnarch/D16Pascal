@@ -32,7 +32,9 @@ type
     FPC: Word;
     FOpCodes: TObjectlist<TOpCode>;
     FAdressStack: TStringList;
+    FRelocTable: TStringList;
     FLabels: TStringList;
+    FUseBigEdian: Boolean;
     procedure ParseLabel();
     procedure ParseDat();
     procedure ParseOp();
@@ -44,7 +46,9 @@ type
     function IsRegister(AName: string): Boolean;
     function LabelExists(AName: string): Boolean;
     procedure ReplaceAllLabels(ASilent: Boolean = False);
+    procedure SwapEndianForAll();
     procedure HexDump();
+    procedure AddAdressToRelocTable(AWord: Word);
   public
     constructor Create();
     destructor Destroy(); override;
@@ -52,7 +56,9 @@ type
     procedure AssembleFile(ASource: string);
     procedure WriteWord(AWord: Word);
     procedure ToStream(AStream: TStream);
+    procedure WriteRelocationTableToStream(AStream: TStream);
     procedure SaveTo(AFile: string);
+    procedure SaveAsModuleTo(AFile: string);
     procedure RegisterLabel(AName: string);
     procedure PushAdressForLabel(AAdress: Word; ALabel: string);
     function GetAdressForLabel(ALabel: string): Word;
@@ -62,6 +68,7 @@ type
     property OpCodes: TObjectlist<TOpCode> read FOpCodes;
     property AdressStack: TStringList read FAdressStack;
     property Labels: TStringList read FLabels;
+    property UseBigEdian: Boolean read FUseBigEdian write FUseBigEdian;
   end;
 
 implementation
@@ -69,7 +76,23 @@ implementation
 uses
   Token, StrUtils;
 
+type
+  TWordRec = record
+    Low: Byte;
+    High: Byte;
+  end;
+
+function ChangeEndian16(X: WORD): WORD; register; //oder auch Swap
+asm
+  xchg AL, AH
+end;
+
 { TD16Assembler }
+
+procedure TD16Assembler.AddAdressToRelocTable(AWord: Word);
+begin
+  FRelocTable.Add(IntToStr(AWord));
+end;
 
 procedure TD16Assembler.AssembleFile(ASource: string);
 var
@@ -113,6 +136,10 @@ begin
     end;
   end;
   ReplaceAllLabels();
+  if UseBigEdian then
+  begin
+    SwapEndianForAll();
+  end;
 end;
 
 constructor TD16Assembler.Create;
@@ -122,6 +149,8 @@ begin
   FOpCodes := TObjectList<TOpCode>.Create();
   FAdressStack := TStringList.Create();
   FLabels := TStringList.Create();
+  FRelocTable := TStringList.Create();
+  FUseBigEdian := False;
   InitOpcodes();
 end;
 
@@ -131,11 +160,13 @@ begin
   FOpCodes.Free;
   FLabels.Free;
   FAdressStack.Free;
+  FRelocTable.Free;
   inherited;
 end;
 
 function TD16Assembler.GetAdressForLabel(ALabel: string): Word;
 begin
+  AddAdressToRelocTable(FPC);
   Result := StrToInt(FLabels.Values[ALabel]);
 end;
 
@@ -144,6 +175,7 @@ var
   LOpCode: TOpCode;
 begin
   Result := nil;
+  LOpCode := nil;
   for LOpCode in FOpCodes do
   begin
     if SameText(LOpCode.Name, AName) then
@@ -307,7 +339,7 @@ procedure TD16Assembler.ParseOp;
 var
   LOp: TOpCode;
   LParamA, LParamB: TParameter;
-  LFullOpCode, LOpA, LOpB: Word;
+  LFullOpCode: Word;
 begin
   LParamA := TParameter.Create();
   LParamB := TParameter.Create();
@@ -365,7 +397,7 @@ end;
 
 procedure TD16Assembler.ParseParameter(AParam: TParameter);
 var
-  LLeftSide, LRightSide, LLabel: string;
+  LLeftSide, LRightSide: string;
   LIsPointer: Boolean;
 begin
   AParam.Reset();
@@ -406,17 +438,25 @@ end;
 procedure TD16Assembler.PushAdressForLabel(AAdress: Word; ALabel: string);
 begin
   FAdressStack.Add(IntToStr(AAdress) + '=' + ALabel);
+  AddAdressToRelocTable(AAdress);
 end;
 
 procedure TD16Assembler.RegisterLabel(AName: string);
+var
+  LWord: Word;
 begin
+  LWord := FPC;
+//  if UseBigEdian then
+//  begin
+//    LWord := ChangeEndian16(LWord);
+//  end;
   if FLabels.IndexOfName(AName) < 0 then
   begin
-    FLabels.Add(AName + '=' + IntToStr(FPC));
+    FLabels.Add(AName + '=' + IntToStr(LWord));
   end
   else
   begin
-    FLabels.Values[AName] := IntToStr(FPC);
+    FLabels.Values[AName] := IntToStr(LWord);
   end;
   ReplaceAllLabels(True);
 end;
@@ -438,6 +478,17 @@ begin
   end;
 end;
 
+procedure TD16Assembler.SaveAsModuleTo(AFile: string);
+var
+  LStream: TMemoryStream;
+begin
+  LStream := TMemoryStream.Create();
+  WriteRelocationTableToStream(LStream);
+  ToStream(LStream);
+  LStream.SaveToFile(AFile);
+  LStream.Free;
+end;
+
 procedure TD16Assembler.SaveTo(AFile: string);
 var
   LStream: TMemoryStream;
@@ -448,10 +499,48 @@ begin
   LStream.Free;
 end;
 
+procedure TD16Assembler.SwapEndianForAll;
+var
+  i: Integer;
+begin
+  for i := 0 to FPC - 1 do
+  begin
+    FMemory[i] := ChangeEndian16(FMemory[i]);
+  end;
+end;
+
 procedure TD16Assembler.ToStream(AStream: TStream);
 begin
   AStream.Write(FMemory, FPC*2);
   HexDump();
+end;
+
+procedure TD16Assembler.WriteRelocationTableToStream(AStream: TStream);
+var
+  LWord: Word;
+  i: Integer;
+begin
+  LWord := FRelocTable.Count;
+  if UseBigEdian then
+  begin
+    LWord := ChangeEndian16(LWord);
+  end;
+  AStream.Write(LWord, 2);
+  for i := 0 to FRelocTable.Count - 1 do
+  begin
+    LWord := StrToInt(FRelocTable.Strings[i]);
+    if UseBigEdian then
+    begin
+      LWord := ChangeEndian16(LWord);
+    end;
+    AStream.Write(LWord, 2);
+  end;
+  LWord := FPC;
+  if UseBigEdian then
+  begin
+    LWord := ChangeEndian16(LWord);
+  end;
+  AStream.Write(LWord, 2);
 end;
 
 procedure TD16Assembler.WriteWord(AWord: Word);

@@ -73,6 +73,33 @@ object Form2: TForm2
       State = cbChecked
       TabOrder = 0
     end
+    object cbAssemble: TCheckBox
+      Left = 80
+      Top = 3
+      Width = 65
+      Height = 17
+      Caption = 'Assemble'
+      TabOrder = 1
+      OnClick = cbAssembleClick
+    end
+    object cbModule: TCheckBox
+      Left = 160
+      Top = 3
+      Width = 105
+      Height = 17
+      Caption = 'Assemble Module'
+      Enabled = False
+      TabOrder = 2
+    end
+    object cbUseBigEndian: TCheckBox
+      Left = 280
+      Top = 3
+      Width = 97
+      Height = 17
+      Caption = 'Use BigEndian'
+      Enabled = False
+      TabOrder = 3
+    end
   end
   object ToolImages: TImageList
     Height = 32
@@ -80,7 +107,7 @@ object Form2: TForm2
     Left = 248
     Top = 120
     Bitmap = {
-      494C0101010008003C0020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101010008004C0020002000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
