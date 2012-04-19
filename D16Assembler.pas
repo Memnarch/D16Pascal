@@ -512,7 +512,6 @@ end;
 procedure TD16Assembler.ToStream(AStream: TStream);
 begin
   AStream.Write(FMemory, FPC*2);
-  HexDump();
 end;
 
 procedure TD16Assembler.WriteRelocationTableToStream(AStream: TStream);
