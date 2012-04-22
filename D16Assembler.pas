@@ -304,7 +304,7 @@ var
 begin
   FLexer.GetToken('dat');
   LRepeat := True;
-  while LRepeat and (not FLexer.PeekToken.IsContent(';')) do
+  while LRepeat and (not FLexer.PeekToken.IsContent(';')) and (not FLexer.PeekToken.IsType(ttEOF)) do
   begin
     LRepeat := not FLexer.PeekToken.FollowedByNewLine;
     if FLexer.PeekToken.IsType(ttCharLiteral) then

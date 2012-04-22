@@ -27,7 +27,9 @@ uses
   Operations in 'Operations.pas',
   HeaderMessage in 'HeaderMessage.pas',
   CaseState in 'CaseState.pas',
-  Opcode in 'Opcode.pas';
+  Opcode in 'Opcode.pas',
+  CompilerUtil in 'CompilerUtil.pas',
+  CompilerDefines in 'CompilerDefines.pas';
 
 {$R *.res}
 

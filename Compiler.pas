@@ -4,11 +4,10 @@ interface
 
 uses
   Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
-  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations, Factor;
+  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations, Factor, CompilerDefines;
+
 
 type
-  TMessageLevel = (mlNone, mlWarning, mlError, mlFatal);
-  TOnMessage = procedure(AMessage, AUnitName: string; ALine: Integer; ALevel: TMessageLevel) of object;
 
   TCompiler = class(TInterfacedObject, IOperations)
   private
@@ -19,6 +18,10 @@ type
     FCurrentProc: TProcDeclaration;
     FSearchPath: TStringlist;
     FOnMessage: TOnMessage;
+    FWarning: Integer;
+    FErrors: Integer;
+    FFatals: Integer;
+    FHints: Integer;
     procedure CompileUnit(AUnit: TPascalUnit);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
@@ -73,6 +76,10 @@ type
     procedure CompilerSource(ASource: string);
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
     property OnMessage: TOnMessage read FOnMessage write FOnMessage;
+    property Errors: Integer read FErrors;
+    property Warnings: Integer read FWarning;
+    property Fatals: Integer read FFatals;
+    property Hints: Integer read FHints;
   end;
 
 const
@@ -122,6 +129,10 @@ begin
   FLexer := AUnit.Lexer;
   if FUnits.Count = 1 then
   begin
+    FErrors := 0;
+    FFatals := 0;
+    FWarning := 0;
+    FHints := 0;
     RegisterBasicTypes();
     RegisterOperations();
   end;
