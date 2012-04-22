@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SynEdit, SynHighlighterAsm, SynEditHighlighter,
-  SynHighlighterPas, ComCtrls, ToolWin, Compiler, ImgList, ExtCtrls;
+  SynHighlighterPas, ComCtrls, ToolWin, Compiler, ImgList, ExtCtrls, SiAuto, SmartInspect;
 
 type
   TForm2 = class(TForm)
@@ -62,6 +62,7 @@ begin
   LMainPath := ExtractFilePath(OpenDialog.FileName);
   LFile := ExtractFileName(OpenDialog.FileName);
   LCompiler.SearchPath.Add(LMainPath);
+  Log.Refresh;
   LCompiler.CompileFile(LFile);
   LOut.Text := Trim(LCompiler.GetDCPUSource());
   RefreshTargetIdent(LOut);
@@ -70,22 +71,27 @@ begin
     LSavePath := LMainPath + ChangeFileExt(LFile, '.asm');
     LOut.SaveToFile(LSavePath);
     Log.Lines.Add('Saved to: ' + LSavePath);
+    Log.Refresh;
     if cbAssemble.Checked then
     begin
       try
         Log.Lines.Add('Assembling...');
+        Log.Refresh;
         LAssembler.UseBigEdian := cbUseBigEndian.Checked;
         if cbUseBigEndian.Checked then
         begin
           Log.Lines.Add('Using BigEndian');
+          Log.Refresh;
         end;
         LAssembler.AssembleFile(LSavePath);
         LAssembler.SaveTo(ChangeFileExt(LSavePath, '.d16'));
         Log.Lines.Add('Assembled to: '  + ChangeFileExt(LSavePath, '.d16'));
+        Log.Refresh;
         if cbModule.Checked then
         begin
           LAssembler.SaveAsModuleTo(ChangeFileExt(LSavePath, '.d16m'));
-          Log.Lines.Add('Saved as module to: ' + ChangeFileExt(LSavePath, '.d16m'))
+          Log.Lines.Add('Saved as module to: ' + ChangeFileExt(LSavePath, '.d16m'));
+          Log.Refresh;
         end;
       except
         on e: Exception do
@@ -97,6 +103,7 @@ begin
   end;
   Log.Lines.Add('Errors: ' + IntToSTr(FErrors));
   Log.Lines.Add('finished');
+  Log.Refresh;
   LCompiler.Free;
   LAssembler.Free;
   LOut.Free;
@@ -152,5 +159,8 @@ begin
     end;
   end;
 end;
+
+initialization
+Si.Enabled := True;
 
 end.

@@ -3,7 +3,7 @@ unit Lexer;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Token;
+  Classes, Types, SysUtils, Generics.Collections, Token, SiAuto, SmartInspect;
 
 type
   TLexer = class
@@ -27,6 +27,7 @@ type
     function GetChar(): Char;
     function IsNextChar(AChar: Char): Boolean;
     function GetEOF: Boolean;
+    function IsParseEOF(): Boolean;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -69,7 +70,11 @@ end;
 
 function TLexer.GetChar: Char;
 begin
-  Result := FSource[FPos];
+  //Result := #0;
+  //if FPos <= Length(FSource) then
+  //begin
+    Result := FSource[FPos];
+  //end;
 end;
 
 function TLexer.GetEOF: Boolean;
@@ -118,6 +123,11 @@ begin
   Result := ((FPos+1) <= Length(FSource)) and (AChar = FSource[FPos+1]);
 end;
 
+function TLexer.IsParseEOF: Boolean;
+begin
+  Result := FPos > Length(FSource);
+end;
+
 procedure TLexer.LoadFromFile(AFile: string);
 var
   LText: TStringList;
@@ -151,6 +161,10 @@ end;
 procedure TLexer.NextChar;
 begin
   Inc(FPos);
+  if FPos > Length(FSource) then
+  begin
+  //  FPos := Length(FSource);
+  end;
 end;
 
 procedure TLexer.ParseCharLiteral;
@@ -161,13 +175,16 @@ begin
   LCloseChar := GetChar();
   NextChar();
   LContent := '';
-  while GetChar() <> LCloseChar do
+  while (GetChar() <> LCloseChar) and (GetChar() <> #10) and (GetChar() <> #13) do
   begin
     LContent := LContent + GetChar();
     NextChar();
   end;
   NewToken(LContent, ttCharLiteral);
-  NextChar();
+  if (GetChar() <> #10) and (GetChar() <> #13) then
+  begin
+    NextChar();
+  end;
 end;
 
 procedure TLexer.ParseIdentifier;
@@ -175,14 +192,14 @@ var
   LContent: string;
   LChar: Char;
 begin
-  LContent := GetChar();
-  NextChar();
-  LChar := GetChar();
-  while CharInSet(LChar, ['A'..'Z','a'..'z','0'..'9', '_']) do
+  LContent := '';
+  //LContent := GetChar();
+  //NextChar();
+  while (not IsParseEOF) and CharInSet(GetChar(), ['A'..'Z','a'..'z','0'..'9', '_']) do
   begin
-    LContent := LContent + LChar;
+    LContent := LContent + GetChar();
     NextChar();
-    LChar := GetChar();
+    //LChar := GetChar();
   end;
   if FSimpleTokensOnly then
   begin
@@ -290,11 +307,18 @@ begin
 end;
 
 procedure TLexer.ParseSource;
+var
+  LChar: Char;
 begin
   FPos := 1;
   FLine := 1;
   while FPos <= Length(FSource) do
   begin
+    if FPos >= Length(FSource) then
+    begin
+      SiMain.LogMessage('fail');
+      LChar := GetChar();
+    end;
     case GetChar of
 
       'A'..'Z', 'a'..'z', '_':
@@ -358,8 +382,10 @@ begin
         end
         else
         begin
-          raise Exception.Create('Problem on Character ' + QuotedStr(GetChar()) + ' Ord(' +
-            IntToStr(Integer(GetChar())) +  ') in line ' + IntToSTr(FLine));
+          NewToken(GetChar, ttNone);
+          NextChar();
+//          raise Exception.Create('Problem on Character ' + QuotedStr(GetChar()) + ' Ord(' +
+//            IntToStr(Integer(GetChar())) +  ') in line ' + IntToSTr(FLine));
         end;
     end;
   end;

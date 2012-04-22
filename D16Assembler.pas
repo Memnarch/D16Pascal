@@ -3,7 +3,7 @@ unit D16Assembler;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode;
+  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SMartInspect;
 
 type
   TD16Ram = array[0..$FFFE] of Word;
@@ -304,7 +304,7 @@ var
 begin
   FLexer.GetToken('dat');
   LRepeat := True;
-  while LRepeat do
+  while LRepeat and (not FLexer.PeekToken.IsContent(';')) do
   begin
     LRepeat := not FLexer.PeekToken.FollowedByNewLine;
     if FLexer.PeekToken.IsType(ttCharLiteral) then
@@ -321,11 +321,15 @@ begin
       WriteWord(StrToInt(FLexer.GetToken('', ttNumber).Content));
     end;
 
-    if not FLexer.PeekToken.IsContent(',') then
+//    if not FLexer.PeekToken.IsContent(',') then
+//    begin
+//      Break;
+//    end;
+//    FLexer.GetToken(',');
+    if FLexer.PeekToken.IsContent(',') then
     begin
-      Break;
+      FLexer.GetToken(',');
     end;
-    FLexer.GetToken(',');
   end;
 end;
 
@@ -344,10 +348,17 @@ begin
   LParamA := TParameter.Create();
   LParamB := TParameter.Create();
   LOp := GetOpCode(FLexer.GetToken('', ttIdentifier).Content);
+  if FLexer.PeekToken.IsContent(',') then
+  begin
+    FLexer.GetToken(','); // who had the idea to place commas AFTER a fucking mnemonic? WHO?!
+  end;
   ParseParameter(LParamA);
   if LOP.ArgCount = 2 then
   begin
-    FLexer.GetToken(',');
+    if FLexer.PeekToken.IsContent(',') then
+    begin
+      FLexer.GetToken(',');
+    end;
     ParseParameter(LParamB);
   end;
   if LOp.IsBasic then
@@ -446,18 +457,21 @@ var
   LWord: Word;
 begin
   LWord := FPC;
+//  if SameText(ANAme, 'generate_board') then
+//  begin
+//  end;
 //  if UseBigEdian then
 //  begin
 //    LWord := ChangeEndian16(LWord);
 //  end;
-  if FLabels.IndexOfName(AName) < 0 then
-  begin
+//  if FLabels.IndexOfName(AName) < 0 then
+//  begin
     FLabels.Add(AName + '=' + IntToStr(LWord));
-  end
-  else
-  begin
-    FLabels.Values[AName] := IntToStr(LWord);
-  end;
+//  end
+//  else
+//  begin
+//    FLabels.Values[AName] := IntToStr(LWord);
+//  end;
   ReplaceAllLabels(True);
 end;
 

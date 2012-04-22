@@ -233,6 +233,7 @@ begin
   begin
     Result := Result + LUnit.GetDCPUSource();
   end;
+  Result := Trim(Result);
 end;
 
 function TCompiler.GetElement(AName: string;
