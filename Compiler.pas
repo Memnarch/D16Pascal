@@ -22,7 +22,8 @@ type
     FErrors: Integer;
     FFatals: Integer;
     FHints: Integer;
-    procedure CompileUnit(AUnit: TPascalUnit);
+    FPeekMode: Boolean;
+    procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
     procedure RegisterOperation(AOpName: string; ALeftType, ARightType: TRawType; ALeftSize, ARightSize: Integer;
@@ -68,18 +69,23 @@ type
     procedure Fatal(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
     function GetPathForFile(AFile: string): string;
+    function GetUnitByName(AName: string): TPascalUnit;
+    function GetCurrentLine(): Integer;
   public
     constructor Create();
     destructor Destroy(); override;
     function GetDCPUSource(): string;
     procedure CompileFile(AFile: string);
     procedure CompilerSource(ASource: string);
+    procedure ClearUnitCache(AName: string);
+    function PeekCompile(ASource, AUnitName: string; var AUnit: TPascalUnit): Boolean;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
     property OnMessage: TOnMessage read FOnMessage write FOnMessage;
     property Errors: Integer read FErrors;
     property Warnings: Integer read FWarning;
     property Fatals: Integer read FFatals;
     property Hints: Integer read FHints;
+    property PeekMode: Boolean read FPeekMode write FPeekMode;
   end;
 
 const
@@ -98,14 +104,32 @@ uses
 
 { TCompiler }
 
+procedure TCompiler.ClearUnitCache(AName: string);
+var
+  LUnit: TPascalUnit;
+begin
+  LUnit := GetUnitByName(AName);
+  if Assigned(LUnit) then
+  begin
+    FUnits.Delete(FUnits.IndexOf(LUnit));
+  end;
+end;
+
 procedure TCompiler.CompileFile(AFile: string);
 var
   LUnit: TPascalUnit;
 begin
   DoMessage('Compiling ' + QuotedStr(AFile), '', 0, mlNone);
   LUnit := TPascalUnit.Create('');
-  LUnit.Lexer.LoadFromFile(GetPathForFile(AFile));
-  CompileUnit(LUnit);
+  try
+    LUnit.Lexer.LoadFromFile(GetPathForFile(AFile));
+    CompileUnit(LUnit);
+  except
+    on E: Exception do
+    begin
+      DoMessage(E.Message, ExtractFileName(AFile), 0, mlFatal);
+    end;
+  end;
 end;
 
 procedure TCompiler.CompilerSource(ASource: string);
@@ -113,8 +137,15 @@ var
   LUnit: TPascalUnit;
 begin
   LUnit := TPascalUnit.Create('');
-  LUnit.Lexer.LoadFromString(ASource);
-  CompileUnit(LUnit);
+  try
+    LUnit.Lexer.LoadFromString(ASource);
+    CompileUnit(LUnit);
+  except
+    on E: Exception do
+    begin
+      DoMessage(E.Message, '', 0, mlFatal);
+    end;
+  end;
 end;
 
 procedure TCompiler.CompileUnit;
@@ -192,6 +223,7 @@ begin
   FUnits := TObjectList<TPascalUnit>.Create();
   FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
+  FPeekMode := False;
 end;
 
 destructor TCompiler.Destroy;
@@ -205,6 +237,17 @@ end;
 procedure TCompiler.DoMessage(AMessage, AUnit: string; ALine: Integer;
   ALevel: TMessageLevel);
 begin
+  case ALevel of
+    mlError:
+    begin
+      Inc(FErrors);
+    end;
+
+    mlFatal:
+    begin
+      Inc(FFatals);
+    end;
+  end;
   if Assigned(FOnMessage) then
   begin
     FOnMessage(AMessage, AUnit, ALine, ALevel);
@@ -224,6 +267,11 @@ end;
 procedure TCompiler.Fatal(AMessage: string);
 begin
   raise Exception.Create(AMessage);
+end;
+
+function TCompiler.GetCurrentLine: Integer;
+begin
+  Result := FLexer.PeekToken.FoundInLine;
 end;
 
 function TCompiler.GetDataType(AName: string): TDataType;
@@ -310,6 +358,20 @@ begin
     begin
       Result := LPath + '\' + AFile;
       Break;
+    end;
+  end;
+end;
+
+function TCompiler.GetUnitByName(AName: string): TPascalUnit;
+var
+  LUnit: TPascalUnit;
+begin
+  Result := nil;
+  for LUnit in FUnits do
+  begin
+    if SameText(Lunit.Name, AName) then
+    begin
+      Result := LUnit;
     end;
   end;
 end;
@@ -854,6 +916,7 @@ begin
     FLexer.GetToken('procedure');
   end;
   LProc := TProcDeclaration.Create(FLexer.GetToken('', ttIdentifier).Content);
+  LProc.Line := GetCurrentLine();
   FCurrentProc := LProc;
   AScope.Add(LProc);
   ParseRoutineParameters(LProc.Parameters);
@@ -969,6 +1032,7 @@ begin
       FLexer.GetToken('of');
     end;
     LType := TDataType.Create(LName, 2, rtArray, GetDataType(FLexer.GetToken('', ttIdentifier).Content));
+    LType.Line := GetCurrentLine();
     for LDimension in LDimensions do
     begin
       LType.Dimensions.Add(LDimension);
@@ -1002,13 +1066,19 @@ begin
 end;
 
 procedure TCompiler.ParseUses;
+var
+  LName: string;
 begin
   FLexer.GetToken('uses');
-  CompileFile(FLexer.GetToken('', ttIdentifier).Content + '.pas');
+  LName := FLexer.GetToken('', ttIdentifier).Content;
+  FCurrentUnit.UsedUnits.Add(LName);
+  CompileFile(LName + '.pas');
   while not FLexer.PeekToken.IsContent(';') do
   begin
     FLexer.GetToken(',');
-    CompileFile(FLexer.GetToken('', ttIdentifier).Content + '.pas');
+    LName := FLexer.GetToken('', ttIdentifier).Content;
+    FCurrentUnit.UsedUnits.Add(LName);
+    CompileFile(LName + '.pas');
   end;
   FLexer.GetToken(';');
 end;
@@ -1065,6 +1135,7 @@ begin
   for LName in LNames do
   begin
     LVarDec := TVarDeclaration.Create(LName, LType);
+    LVarDec.Line := GetCurrentLine();
     LVarDec.IsConst := AAsConst;
     LVarDec.DefaultValue := LDef;
     if AAsParameter or AAsLocal then
@@ -1111,6 +1182,21 @@ begin
   FLexer.GetToken(';');
 end;
 
+
+function TCompiler.PeekCompile(ASource, AUnitName: string; var AUnit: TPascalUnit): Boolean;
+begin
+  Result := True;
+  try
+    FFatals := 0;
+    FErrors := 0;
+    ClearUnitCache(AUnitName);
+    CompilerSource(ASource);
+    AUnit := GetUnitByName(AUnitName);
+    Result := Assigned(AUnit) and (FFatals = 0) and (FErrors = 0);
+  except
+    Result := False;
+  end;
+end;
 
 procedure TCompiler.RegisterBasicTypes;
 begin

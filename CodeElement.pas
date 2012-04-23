@@ -13,6 +13,7 @@ type
   private
     FName: string;
     FSubElements: TObjectList<TCodeElement>;
+    FLine: Integer;
   public
     constructor Create(AName: string);
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
@@ -20,6 +21,7 @@ type
     function GetDCPUSource(): string; virtual;
     property Name: string read FName write FName;
     property SubElements: TObjectList<TCodeElement> read FSubElements;
+    property Line: Integer read FLine write FLine;
   end;
 
 
@@ -36,6 +38,7 @@ var
 constructor TCodeElement.Create(AName: string);
 begin
   FName := AName;
+  FLine := -1;
   FSubElements := TObjectList<TCodeElement>.Create();
 end;
 

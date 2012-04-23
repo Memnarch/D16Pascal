@@ -11,6 +11,7 @@ type
     FFooterSource: TStringList;
     FInitSection: TObjectList<TCodeElement>;
     FLexer: TLexer;
+    FUsedUnits: TStringList;
   public
     constructor Create(AName: string); 
     destructor Destroy(); override;
@@ -18,6 +19,7 @@ type
     property FooterSource: TStringList read FFooterSource;
     property InitSection: TObjectList<TCodeElement> read FInitSection;
     property Lexer: TLexer read FLexer;
+    property UsedUnits: TStringList read FUsedUnits;
   end;
 
 implementation
@@ -33,6 +35,7 @@ begin
   FFooterSource := TStringList.Create();
   FInitSection := TObjectList<TCodeElement>.Create();
   FLexer := TLexer.Create();
+  FUsedUnits := TStringList.Create();
 end;
 
 destructor TPascalUnit.Destroy;
@@ -40,6 +43,7 @@ begin
   FFooterSource.Free;
   FinitSection.Free;
   FLexer.Free;
+  FUsedUnits.Free;
   inherited;
 end;
 
