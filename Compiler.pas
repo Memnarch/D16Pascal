@@ -86,6 +86,7 @@ type
     property Fatals: Integer read FFatals;
     property Hints: Integer read FHints;
     property PeekMode: Boolean read FPeekMode write FPeekMode;
+    property Units: TObjectList<TPascalUnit> read FUnits;
   end;
 
 const
