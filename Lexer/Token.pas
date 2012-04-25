@@ -67,7 +67,7 @@ procedure TToken.MatchContent(AContent: string);
 begin
   if not IsContent(AContent) then
   begin
-    raise Exception.Create('Expected ' + QuotedStr(AContent) + ' but found ' + QuotedStr(FContent));
+    raise EAbort.Create('Expected ' + QuotedStr(AContent) + ' but found ' + QuotedStr(FContent));
   end;
 end;
 
@@ -75,7 +75,7 @@ procedure TToken.MatchType(AType: TTokenType);
 begin
   if not IsType(AType) then
   begin
-    raise Exception.Create('Expected ' + QuotedStr(GetTokenName(AType)) + ' but found ' + QuotedStr(GetTokenName(FTokenType)) + ' ' + QuotedStr(FContent));
+    raise EAbort.Create('Expected ' + QuotedStr(GetTokenName(AType)) + ' but found ' + QuotedStr(GetTokenName(FTokenType)) + ' ' + QuotedStr(FContent));
   end;
 end;
 
