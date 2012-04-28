@@ -35,7 +35,7 @@ var
 
 implementation
 uses
- Optimizer, HeaderMessage, D16Assembler, CompilerUtil;
+  HeaderMessage, D16Assembler, CompilerUtil;
 
 {$R *.dfm}
 

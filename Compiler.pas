@@ -457,8 +457,25 @@ begin
   LBlock := TASMBlock.Create('');
   AScope.Add(LBlock);
   FLexer.GetToken('asm');
-  while not (FLexer.PeekToken.IsContent('end') and FLexer.AHeadToken.IsContent(';')) do
+  while not ((FLexer.PeekToken.IsContent('end') and (not FLexer.PeekToken.FollowedByNewLine) and FLexer.AHeadToken.IsContent(';'))) do
   begin
+    if FLexer.PeekToken.IsContent(';') then
+    begin
+      while not FLexer.EOF do
+      begin
+        LToken := FLexer.GetToken();
+        if LToken.FollowedByNewLine then
+        begin
+          Break;
+        end;
+      end;
+      if FLexer.EOF then
+      begin
+        Break;
+      end;
+      LBlock.Source := LBlock.Source + sLineBreak;
+      Continue;
+    end;
     LToken := FLexer.GetToken();
     LContent := LToken.Content;
     if LToken.IsType(ttIdentifier) and (AnsiIndexText(LContent, ['a', 'b', 'c', 'x', 'y', 'z', 'i', 'j']) < 0) then
@@ -482,12 +499,7 @@ begin
       end;
     end;
     LBlock.Source := LBlock.Source + LContent;
-//    if (LToken.IsType(ttIdentifier) or LToken.IsType(ttReserved)
-//        or (AnsiIndexText(LToken.Content, ['and', 'or', 'mod']) >= 0))
-//      and (not (FLexer.PeekToken.IsContent(']') or FLexer.PeekToken.IsType(ttTermOp))) then
-//    begin
-      LBlock.Source := LBlock.Source + ' ';
-//    end;
+    LBlock.Source := LBlock.Source + ' ';
     if LToken.FollowedByNewLine then
     begin
       LBlock.Source := LBlock.Source + sLineBreak;

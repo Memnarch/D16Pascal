@@ -35,19 +35,20 @@ type
     FRelocTable: TStringList;
     FLabels: TStringList;
     FUseBigEdian: Boolean;
+    FHexDumpPath: string;
     procedure ParseLabel();
     procedure ParseDat();
     procedure ParseOp();
     procedure ParseComment();
     procedure InitOpcodes();
-    procedure ParseParameter(AParam: TParameter);
-    function GetRegisterCode(ALeft, ARight: string; AIsPointer: Boolean): Integer;
+    procedure ParseParameter(AParam: TParameter; AIsFirst: Boolean = True);
+    function GetRegisterCode(ALeft, ARight: string; AIsPointer: Boolean; AIsFirst: Boolean = True): Integer;
     function GetOpCode(AName: string): TOpCode;
     function IsRegister(AName: string): Boolean;
     function LabelExists(AName: string): Boolean;
     procedure ReplaceAllLabels(ASilent: Boolean = False);
     procedure SwapEndianForAll();
-    procedure HexDump();
+    procedure HexDump(AFile: string);
     procedure AddAdressToRelocTable(AWord: Word);
   public
     constructor Create();
@@ -69,6 +70,7 @@ type
     property AdressStack: TStringList read FAdressStack;
     property Labels: TStringList read FLabels;
     property UseBigEdian: Boolean read FUseBigEdian write FUseBigEdian;
+    property HexDumpPath: string read FHexDumpPath write FHexDumpPath;
   end;
 
 implementation
@@ -99,6 +101,7 @@ var
   LText: TStringList;
 begin
   LText := TStringList.Create();
+  FHexDumpPath := ChangeFileExt(ASource, '.hex');
   LText.LoadFromFile(ASource);
   AssembleSource(LText.Text);
   LText.Free;
@@ -136,10 +139,12 @@ begin
     end;
   end;
   ReplaceAllLabels();
+  HexDump(FHexDumpPath);
   if UseBigEdian then
   begin
     SwapEndianForAll();
   end;
+
 end;
 
 constructor TD16Assembler.Create;
@@ -175,7 +180,6 @@ var
   LOpCode: TOpCode;
 begin
   Result := nil;
-  LOpCode := nil;
   for LOpCode in FOpCodes do
   begin
     if SameText(LOpCode.Name, AName) then
@@ -184,16 +188,16 @@ begin
       Break;
     end;
   end;
-  if not Assigned(LOpCode) then
+  if not Assigned(Result) then
   begin
     raise Exception.Create('Unknown opcode Identifier ' + QuotedStr(AName));
   end;
 end;
 
 function TD16Assembler.GetRegisterCode(ALeft, ARight: string;
-  AIsPointer: Boolean): Integer;
+  AIsPointer: Boolean; AIsFirst: Boolean = True): Integer;
 var
-  LRightCode: Integer;
+  LRightCode, LVal: Integer;
 begin
   LRightCode := -1;
   Result := AnsiIndexText(ALeft, ['a', 'b', 'c', 'x', 'y', 'z','i', 'j']);
@@ -207,13 +211,16 @@ begin
   end;
   if Result < 0 then
   begin
-    if SameText(ALeft, 'pop') then Result := $18;
+    if SameText(ALeft, 'pop') and (not AIsFirst) then Result := $18;
+    if SameText(ALeft, 'push') and AIsFirst then Result := $18;
     if SameText(ALeft, 'peek') then Result := $19;
-    if SameText(ALeft, 'push') then Result := $1a;
+    if SameText(ALeft, 'sp')
+      and (LRightCode = $1f) then Result := $1a;
     if SameText(ALeft, 'sp') then Result := $1b;
     if SameText(ALeft, 'pc') then Result := $1c;
-    if SameText(ALeft, 'o') then Result := $1d;
+    if SameText(ALeft, 'ex') then Result := $1d;
   end;
+
   if Result < 0 then
   begin
     if AIsPointer then
@@ -224,8 +231,15 @@ begin
     begin
       Result := $1f; // next word
     end;
+    if TryStrToInt(ALeft, LVal) and (not AIsFirst) then
+    begin
+      if (LVal >= -1) and (LVal <= 30)  then
+      begin
+        Result := $20 + LVal+1;
+      end;
+    end;
   end;
-  if LRightCode >= 0 then
+  if (LRightCode >= 0) and (Result < 0) then
   begin
     Result := $10 + LRightCode;
     if (LRightCode > 7) or (Result < $10) or (Result > $17) then
@@ -244,40 +258,72 @@ var
   LList: TStringList;
   i: Integer;
 begin
+  if Trim(AFile) = '' then
+  begin
+    Exit;
+  end;
   LLIst := TStringList.Create();
   for i := 0 to FPC-1 do
   begin
-    LList.Add(IntToHex(FMemory[i], 4));
+    LList.Add('dat 0x' + IntToHex(FMemory[i], 4));
   end;
-  LList.SaveToFile('E:\dump.txt');
+  LList.SaveToFile(AFile);
   LLIst.Free;
 end;
 
 procedure TD16Assembler.InitOpcodes;
 begin
+// the 1.7 table
   FOpCodes.Add(TOpCode.Create('set', $1, 2));
   FOpCodes.Add(TOpCode.Create('add', $2, 2));
   FOpCodes.Add(TOpCode.Create('sub', $3, 2));
   FOpCodes.Add(TOpCode.Create('mul', $4, 2));
-  FOpCodes.Add(TOpCode.Create('div', $5, 2));
-  FOpCodes.Add(TOpCode.Create('mod', $6, 2));
-  FOpCodes.Add(TOpCode.Create('shl', $7, 2));
-  FOpCodes.Add(TOpCode.Create('shr', $8, 2));
-  FOpCodes.Add(TOpCode.Create('and', $9, 2));
-  FOpCodes.Add(TOpCode.Create('bor', $a, 2));
-  FOpCodes.Add(TOpCode.Create('xor', $b, 2));
-  FOpCodes.Add(TOpCode.Create('ife', $c, 2));
-  FOpCodes.Add(TOpCode.Create('ifn', $d, 2));
-  FOpCodes.Add(TOpCode.Create('ifg', $e, 2));
-  FOpCodes.Add(TOpCode.Create('ifb', $f, 2));
+  FOpCodes.Add(TOpCode.Create('mli', $5, 2));
+  FOpCodes.Add(TOpCode.Create('div', $6, 2));
+  FOpCodes.Add(TOpCode.Create('dvi', $7, 2));
+  FOpCodes.Add(TOpCode.Create('mod', $8, 2));
+  FOpCodes.Add(TOpCode.Create('mdi', $9, 2));
+  FOpCodes.Add(TOpCode.Create('and', $a, 2));
+  FOpCodes.Add(TOpCode.Create('bor', $b, 2));
+  FOpCodes.Add(TOpCode.Create('xor', $c, 2));
+  FOpCodes.Add(TOpCode.Create('shr', $d, 2));
+  FOpCodes.Add(TOpCode.Create('asr', $e, 2));
+  FOpCodes.Add(TOpCode.Create('shl', $f, 2));
+  FOpCodes.Add(TOpCode.Create('ifb', $10, 2));
+  FOpCodes.Add(TOpCode.Create('ifc', $11, 2));
+  FOpCodes.Add(TOpCode.Create('ife', $12, 2));
+  FOpCodes.Add(TOpCode.Create('ifn', $13, 2));
+  FOpCodes.Add(TOpCode.Create('ifg', $14, 2));
+  FOpCodes.Add(TOpCode.Create('ifa', $15, 2));
+  FOpCodes.Add(TOpCode.Create('ifl', $16, 2));
+  FOpCodes.Add(TOpCode.Create('ifu', $17, 2));
+
+  FOpCodes.Add(TOpCode.Create('adx', $1a, 2));
+  FOpCodes.Add(TOpCode.Create('sbx', $1b, 2));
+
+  FOpCodes.Add(TOpCode.Create('sti', $1e, 2));
+  FOpCodes.Add(TOpCode.Create('std', $1f, 2));
+
   //non basic opcodes
   FOpCodes.Add(TOpCode.Create('jsr', $1, 1, False));
+
+  FOpCodes.Add(TOpCode.Create('hcf', $7, 1, False)); //undocumented but still working
+
+  FOpCodes.Add(TOpCode.Create('int', $8, 1, False));
+  FOpCodes.Add(TOpCode.Create('iag', $9, 1, False));
+  FOpCodes.Add(TOpCode.Create('ias', $a, 1, False));
+  FOpCodes.Add(TOpCode.Create('rfi', $b, 1, False));
+  FOpCodes.Add(TOpCode.Create('iaq', $c, 1, False));
+
+  FOpCodes.Add(TOpCode.Create('hwn', $10, 1, False));
+  FOpCodes.Add(TOpCode.Create('hwq', $11, 1, False));
+  FOpCodes.Add(TOpCode.Create('hwi', $12, 1, False));
 end;
 
 function TD16Assembler.IsRegister(AName: string): Boolean;
 begin
   Result := AnsiIndexText(AName, ['a', 'b', 'c', 'x', 'y', 'z','i', 'j']) >= 0;
-  Result := Result or (AnsiIndexText(AName, ['push', 'pop', 'peek', 'sp', 'pc', 'o','i', 'j']) >= 0);
+  Result := Result or (AnsiIndexText(AName, ['push', 'pop', 'peek', 'sp', 'pc', 'ex','i', 'j']) >= 0);
 end;
 
 function TD16Assembler.LabelExists(AName: string): Boolean;
@@ -359,33 +405,21 @@ begin
     begin
       FLexer.GetToken(',');
     end;
-    ParseParameter(LParamB);
+    ParseParameter(LParamB, False);
   end;
   if LOp.IsBasic then
   begin
-    LFullOpCode := LOp.Value + (LParamA.FRegCode shl 4) + (LParamB.FRegCode shl 10);
+    LFullOpCode := LOp.Value + (LParamB.FRegCode shl 10) + (LParamA.FRegCode shl 5);
   end
   else
   begin
-    LFullOpCode := (LOp.Value shl 4) + (LParamA.FRegCode shl 10);
+    LFullOpCode := (LOp.Value shl 5) + (LParamA.FRegCode shl 10);
   end;
   WriteWord(LFullOpCode);
-  if LParamA.HasLabel then
-  begin
-    if not LabelExists(LParamA.LabelName) then
-    begin
-      PushAdressForLabel(FPC, LParamA.LabelName);
-    end
-    else
-    begin
-      LParamA.Value := GetAdressForLabel(LParamA.LabelName);
-    end;
-  end;
-  if (LParamA.FRegCode = $1e) or (LParamA.FRegCode = $1f)
-    or ((LParamA.FRegCode >= $10) and (LParamA.FRegCode <= $17) ) then
-  begin
-    WriteWord(LParamA.Value);
-  end;
+
+
+
+
   if LParamB.HasLabel then
   begin
     if not LabelExists(LParamB.LabelName) then
@@ -402,11 +436,29 @@ begin
   begin
     WriteWord(LParamB.Value);
   end;
+
+  if LParamA.HasLabel then
+  begin
+    if not LabelExists(LParamA.LabelName) then
+    begin
+      PushAdressForLabel(FPC, LParamA.LabelName);
+    end
+    else
+    begin
+      LParamA.Value := GetAdressForLabel(LParamA.LabelName);
+    end;
+  end;
+  if (LParamA.FRegCode = $1e) or (LParamA.FRegCode = $1f)
+    or ((LParamA.FRegCode >= $10) and (LParamA.FRegCode <= $17) ) then
+  begin
+    WriteWord(LParamA.Value);
+  end;
+  
   LParamA.Free;
   LParamB.Free;
 end;
 
-procedure TD16Assembler.ParseParameter(AParam: TParameter);
+procedure TD16Assembler.ParseParameter(AParam: TParameter; AIsFirst: Boolean = True);
 var
   LLeftSide, LRightSide: string;
   LIsPointer: Boolean;
@@ -435,7 +487,7 @@ begin
     FLexer.GetToken('+');
     LRightSide := FLexer.GetToken('', ttIdentifier).Content;
   end;
-  AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer);
+  AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
   if not IsRegister(LLeftSide) and (not AParam.HasValue) then
   begin
     AParam.LabelName := LLeftSide;
