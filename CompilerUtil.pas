@@ -22,7 +22,7 @@ begin
   LSpace := '               ';
   for i := 0 to ALines.Count - 1 do
   begin
-    if ALines.Strings[i][1] <> ':' then
+    if (Length(ALines.Strings[i]) > 0) and (ALines.Strings[i][1] <> ':') then
     begin
       ALines.Strings[i] := LSpace + ALines.Strings[i];
     end;

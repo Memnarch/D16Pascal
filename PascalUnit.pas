@@ -70,7 +70,7 @@ begin
   begin
     LInit := LInit + LElement.GetDCPUSource();
   end;
-  LInit := SimpleOptimizeDCPUCode(LInit);
+  //LInit := SimpleOptimizeDCPUCode(LInit);
   Result := LInit + Result + LData + FFooterSource.Text;
 end;
 

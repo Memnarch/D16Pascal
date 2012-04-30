@@ -190,7 +190,7 @@ begin
   end;
   if not Assigned(Result) then
   begin
-    raise Exception.Create('Unknown opcode Identifier ' + QuotedStr(AName));
+    raise EAbort.Create('Unknown opcode Identifier ' + QuotedStr(AName));
   end;
 end;
 
@@ -200,6 +200,7 @@ var
   LRightCode, LVal: Integer;
 begin
   LRightCode := -1;
+  Result := -1;
   Result := AnsiIndexText(ALeft, ['a', 'b', 'c', 'x', 'y', 'z','i', 'j']);
   if ARight <> '' then
   begin
@@ -209,16 +210,36 @@ begin
   begin
     Result := Result + 8; //[register]
   end;
+
   if Result < 0 then
   begin
     if SameText(ALeft, 'pop') and (not AIsFirst) then Result := $18;
     if SameText(ALeft, 'push') and AIsFirst then Result := $18;
     if SameText(ALeft, 'peek') then Result := $19;
-    if SameText(ALeft, 'sp')
-      and (LRightCode = $1f) then Result := $1a;
-    if SameText(ALeft, 'sp') then Result := $1b;
+    if SameText(ALeft, 'sp')then
+    begin
+      if(LRightCode = $1f) then
+      begin
+        Result := $1a;
+        LRightCode := -1;
+      end
+      else
+      begin
+        if LRightCode < 0 then Result := $1b
+      end;
+    end;
+
     if SameText(ALeft, 'pc') then Result := $1c;
     if SameText(ALeft, 'ex') then Result := $1d;
+  end;
+
+  if (LRightCode >= 0) then
+  begin
+    Result := $10 + Result;
+    if (LRightCode <> $1f) or (Result > $17) then
+    begin
+      raise Exception.Create('Invalid combination [' + QuotedStr(ALeft) + ' + ' + QuotedStr(ARight) + ']');
+    end;
   end;
 
   if Result < 0 then
@@ -239,14 +260,7 @@ begin
       end;
     end;
   end;
-  if (LRightCode >= 0) and (Result < 0) then
-  begin
-    Result := $10 + LRightCode;
-    if (LRightCode > 7) or (Result < $10) or (Result > $17) then
-    begin
-      raise Exception.Create('Invalid combination [' + QuotedStr(ALeft) + ' + ' + QuotedStr(ARight) + ']');
-    end;
-  end;
+  
   if Result < 0 then
   begin
     raise Exception.Create('can not get regcode for ' + QuotedStr(ALeft));
@@ -364,14 +378,24 @@ begin
     end
     else
     begin
-      WriteWord(StrToInt(FLexer.GetToken('', ttNumber).Content));
+      if FLexer.PeekToken.IsType(ttIdentifier) then
+      begin
+        if LabelExists(FLexer.PeekToken.Content) then
+        begin
+          WriteWord(GetAdressForLabel(FLexer.GetToken('', ttIdentifier).Content));
+        end
+        else
+        begin
+          PushAdressForLabel(FPC, FLexer.GetToken('', ttIdentifier).Content);
+          WriteWord($fcfc);
+        end;
+      end
+      else
+      begin
+        WriteWord(StrToInt(FLexer.GetToken('', ttNumber).Content));
+      end;
     end;
 
-//    if not FLexer.PeekToken.IsContent(',') then
-//    begin
-//      Break;
-//    end;
-//    FLexer.GetToken(',');
     if FLexer.PeekToken.IsContent(',') then
     begin
       FLexer.GetToken(',');
@@ -431,7 +455,7 @@ begin
       LParamB.Value := GetAdressForLabel(LParamB.LabelName);
     end;
   end;
-  if (LParamB.FRegCode = $1e) or (LParamB.FRegCode = $1f)
+  if (LParamB.FRegCode = $1e) or (LParamB.FRegCode = $1f) or (LParamB.FRegCode = $1a)
     or ((LParamB.FRegCode >= $10) and (LParamB.FRegCode <= $17) ) then
   begin
     WriteWord(LParamB.Value);
@@ -448,7 +472,7 @@ begin
       LParamA.Value := GetAdressForLabel(LParamA.LabelName);
     end;
   end;
-  if (LParamA.FRegCode = $1e) or (LParamA.FRegCode = $1f)
+  if (LParamA.FRegCode = $1e) or (LParamA.FRegCode = $1f) or (LParamA.FRegCode = $1a)
     or ((LParamA.FRegCode >= $10) and (LParamA.FRegCode <= $17) ) then
   begin
     WriteWord(LParamA.Value);
@@ -481,12 +505,15 @@ begin
   else
   begin
     LLeftSide := FLexer.GetToken('', ttIdentifier).Content;
+    if LIsPointer and FLexer.PeekToken.IsContent('+') then
+    begin
+      FLexer.GetToken('+');
+      AParam.HasValue := True;
+      LRightSide := FLexer.GetToken('', ttNumber).Content;
+      AParam.FValue := StrToInt(LRightSide);
+    end;
   end;
-  if LIsPointer and FLexer.PeekToken.IsContent('+') then
-  begin
-    FLexer.GetToken('+');
-    LRightSide := FLexer.GetToken('', ttIdentifier).Content;
-  end;
+
   AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
   if not IsRegister(LLeftSide) and (not AParam.HasValue) then
   begin
