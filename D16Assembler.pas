@@ -200,7 +200,6 @@ var
   LRightCode, LVal: Integer;
 begin
   LRightCode := -1;
-  Result := -1;
   Result := AnsiIndexText(ALeft, ['a', 'b', 'c', 'x', 'y', 'z','i', 'j']);
   if ARight <> '' then
   begin
@@ -347,7 +346,6 @@ end;
 
 procedure TD16Assembler.ParseComment;
 begin
-  FLexer.GetToken(';');
   while not FLexer.PeekToken.FollowedByNewLine do
   begin
     FLexer.GetToken();

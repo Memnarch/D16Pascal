@@ -190,7 +190,6 @@ end;
 procedure TLexer.ParseIdentifier;
 var
   LContent: string;
-  LChar: Char;
 begin
   LContent := '';
   //LContent := GetChar();
