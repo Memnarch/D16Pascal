@@ -6,9 +6,7 @@ uses
   Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations, Factor, CompilerDefines;
 
-
 type
-
   TCompiler = class(TInterfacedObject, IOperations)
   private
     FLexer: TLexer;
