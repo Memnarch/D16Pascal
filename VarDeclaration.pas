@@ -66,7 +66,7 @@ begin
         Result := 'j';
         if LMod > 0 then
         begin
-          Result := IntToSTr(LMod) + ' + ' + Result;
+          Result := Result + ' + ' + IntToSTr(LMod);
         end;
     end;
   end
@@ -78,7 +78,7 @@ begin
       Result := 'j';
       if LMod > 0 then
       begin
-        Result := IntToStr(LMod) + ' + ' + Result;
+        Result := Result + ' + ' + IntToStr(LMod);
       end;
     end
     else
