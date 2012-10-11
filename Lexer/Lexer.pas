@@ -393,6 +393,10 @@ end;
 
 function TLexer.PeekToken: TToken;
 begin
+  if FTokenIndex > (FTokens.Count-1) then
+  begin
+    raise EAbort.Create('Unexpected EOF');
+  end;
   Result := FTokens.Items[FTokenIndex];
 end;
 
