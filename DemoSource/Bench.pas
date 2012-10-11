@@ -3,16 +3,16 @@ unit Bench;
 var
 	GRed: Word = 0x4000;
 
-procedure Print(AText: Word);
+procedure Print(AText: string);
 var
 	LVid: Word;
 begin
 	LVid := 0x8000;
-	while AText^ > 0 do
+	while Word(AText)^ > 0 do
 	begin
-		LVid^ := GRed + AText^;
+		LVid^ := GRed + Word(AText)^;
 		LVid := LVid + 1;
-		AText := AText + 1;
+		Word(AText) := Word(AText) + 1;
 	end;
 end;
 

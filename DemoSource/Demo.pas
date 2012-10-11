@@ -21,8 +21,8 @@ const
 begin
 	CLS(0);
 	PrintLn(msgKey);
-	PrintHex(0xF23c);
-	case LVar + 1 of
+	PrintHex(16);
+	case LVar of
 		1, 2:
 		begin
 			println('its 1 or 2');
