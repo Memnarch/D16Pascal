@@ -3,7 +3,7 @@ unit D16Assembler;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SMartInspect;
+  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SmartInspect;
 
 type
   TD16Ram = array[0..$FFFE] of Word;
@@ -144,7 +144,6 @@ begin
   begin
     SwapEndianForAll();
   end;
-
 end;
 
 constructor TD16Assembler.Create;
@@ -259,7 +258,7 @@ begin
       end;
     end;
   end;
-  
+
   if Result < 0 then
   begin
     raise Exception.Create('can not get regcode for ' + QuotedStr(ALeft));
@@ -286,7 +285,7 @@ end;
 
 procedure TD16Assembler.InitOpcodes;
 begin
-// the 1.7 table
+  // the 1.7 table
   FOpCodes.Add(TOpCode.Create('set', $1, 2));
   FOpCodes.Add(TOpCode.Create('add', $2, 2));
   FOpCodes.Add(TOpCode.Create('sub', $3, 2));
@@ -346,11 +345,14 @@ end;
 
 procedure TD16Assembler.ParseComment;
 begin
-  while not FLexer.PeekToken.FollowedByNewLine do
+  while (not FLexer.EOF) and (not FLexer.PeekToken.FollowedByNewLine) do
   begin
     FLexer.GetToken();
   end;
-  FLexer.GetToken();
+  if not FLexer.EOF then
+  begin
+    FLexer.GetToken();
+  end;
 end;
 
 procedure TD16Assembler.ParseDat;
@@ -475,7 +477,7 @@ begin
   begin
     WriteWord(LParamA.Value);
   end;
-  
+
   LParamA.Free;
   LParamB.Free;
 end;
