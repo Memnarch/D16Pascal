@@ -6,7 +6,7 @@ uses
   Classes, Types, Generics.Collections, CodeElement;
 
 type
-  TRawType = (rtUInteger, rtBoolean, rtPointer, rtArray, rtRecord, rtString);
+  TRawType = (rtUInteger, rtBoolean, rtPointer, rtArray, rtRecord, rtString, rtNilType);
 
   TDataType = class(TCodeElement)
   private

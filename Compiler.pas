@@ -21,6 +21,7 @@ type
     FFatals: Integer;
     FHints: Integer;
     FPeekMode: Boolean;
+    FNilDataType: TDataType;
     procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
@@ -250,6 +251,7 @@ begin
   FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
   FPeekMode := False;
+  FNilDataType := TDataType.Create('NilType', 0, rtNilType);
   Initialize();
 end;
 
@@ -862,13 +864,20 @@ var
   i: Integer;
   LParamType: TDataType;
 begin
-  Result := nil;
+  Result := FNilDataType;
   LCall := TProcCall.Create();
   AScope.Add(LCall);
   LCall.ProcDeclaration := TProcDeclaration(ExpectElement(FLexer.GetToken().Content, TProcDeclaration));
   if LCall.ProcDeclaration.IsFunction then
   begin
     Result := LCall.ProcDeclaration.ResultType;
+  end
+  else
+  begin
+    if not AIncludeEndMark then //we are inside an expression, no procedure allowed
+    begin
+      Fatal('Procedure not allowed inside an expression');
+    end;
   end;
   FLexer.GetToken('(');
   for i := 0 to LCall.ProcDeclaration.Parameters.Count - 1 do
@@ -1321,6 +1330,7 @@ end;
 procedure TCompiler.Reset;
 begin
   FUnits.Clear();
+  Initialize();
 end;
 
 end.
