@@ -3,7 +3,7 @@ unit PascalUnit;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement, Lexer;
+  Classes, Types, Generics.Collections, CodeElement, Lexer, WriterIntf;
 
 type
   TPascalUnit = class(TCodeElement)
@@ -15,7 +15,7 @@ type
   public
     constructor Create(AName: string); 
     destructor Destroy(); override;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property FooterSource: TStringList read FFooterSource;
     property InitSection: TObjectList<TCodeElement> read FInitSection;
     property Lexer: TLexer read FLexer;
@@ -47,31 +47,36 @@ begin
   inherited;
 end;
 
-function TPascalUnit.GetDCPUSource: string;
+procedure TPascalUnit.GetDCPUSource;
 var
   LElement: TCodeElement;
-  LData, LInit: string;
+//  LData, LInit: string;
 begin
-  Result := '';
-  LData := '';
+//  LData := '';
+
+//  LInit := '';
+  for LElement in FInitSection do
+  begin
+    LElement.GetDCPUSource(AWriter);
+  end;
+
   for LElement in SubElements do
   begin
     if not (LElement is TVarDeclaration) then
     begin
-      Result := Result + LElement.GetDCPUSource();
-    end
-    else
-    begin
-      LData := LData + LElement.GetDCPUSource();
+      LElement.GetDCPUSource(AWriter);
     end;
   end;
-  LInit := '';
-  for LElement in FInitSection do
+
+  for LElement in SubElements do
   begin
-    LInit := LInit + LElement.GetDCPUSource();
+    if LELement is TVarDeclaration then
+    begin
+      LElement.GetDCPUSource(AWriter);
+    end;
   end;
-  //LInit := SimpleOptimizeDCPUCode(LInit);
-  Result := LInit + Result + LData + FFooterSource.Text;
+  AWriter.Write(FFooterSource.Text);
+//  Result := LInit + Result + LData + FFooterSource.Text;
 end;
 
 end.

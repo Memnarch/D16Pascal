@@ -3,7 +3,7 @@ unit Factor;
 interface
 
 uses
-  Classes, Types, Generics.Collections,CodeElement, OpElement, VarDeclaration;
+  Classes, Types, Generics.Collections,CodeElement, OpElement, VarDeclaration, WriterIntf;
 
 type
   TFactor = class(TOpElement)
@@ -15,14 +15,14 @@ type
     FDereference: Boolean;
     FModiviers: TObjectList<TCodeElement>;
     FModifierMax: TList<Integer>;
-    function GetPushValue(): string;
-    function GetModifierSource(): string;
+    procedure GetPushValue(AWriter: IWriter);
+    procedure GetModifierSource(AWriter: IWriter);
     function GetMultiplierForArrayModifier(AIndex: Integer): Integer;
   public
     constructor Create(); 
     destructor Destroy(); override;
     function IsConstant(): Boolean;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property VarDeclaration: TVarDeclaration read FVarDeclaration write FVarDeclaration;
     property Value: string read FValue write FValue;
     property GetAdress: Boolean read FGetAdress write FGetAdress;
@@ -53,75 +53,63 @@ begin
   inherited;
 end;
 
-function TFactor.GetDCPUSource: string;
+procedure TFactor.GetDCPUSource;
 begin
-  Result := '';
   if SubElements.Count > 0 then
   begin
-    Result := inherited;
+    inherited;
   end
   else
   begin
-    Result := GetPushValue();
+    GetPushValue(AWriter);
   end;
   if Dereference then
   begin
-    Result := Result + 'set x, pop' + sLineBreak;
-    Result := Result + 'set x, [x]' + sLineBreak;
-    Result := Result + 'set push, x' + sLineBreak;
-//    if not (LValToPush[1] = '[') then
-//    begin
-//      LValToPush := '[' + LValToPush + ']';
-//    end;
-//    Result := Result + 'set x, ' + LValToPush + sLineBreak;
-//    if AnsiIndexText(LValToPush, ['[a]', '[b]', '[c]']) = -1 then
-//    begin
-//      Result := Result + 'set x, [x]' + sLineBreak;
-//    end;
-//    LValToPush := 'x';
+    AWriter.Write('set x, pop');
+    AWriter.Write('set x, [x]');
+    AWriter.Write('set push, x');
   end;
-  Result := Result + GetModifierSource();
+  GetModifierSource(AWriter);
   if Inverse then
   begin
-    Result := Result + 'set x, pop' + sLineBreak;
-    Result := Result + 'xor x, 0xffff' + sLineBreak;
-    Result := Result + 'set push, x' + sLineBreak;
+    AWriter.Write('set x, pop');
+    AWriter.Write('xor x, 0xffff');
+    AWriter.Write('set push, x');
   end;
 end;
 
-function TFactor.GetModifierSource: string;
+procedure TFactor.GetModifierSource;
 var
   LElement: TCodeElement;
   i: Integer;
 begin
-  Result := '';
   for i := 0 to FModiviers.Count-1 do
   begin
     LElement := FModiviers.Items[i];
-    Result := Result + LElement.GetDCPUSource();
+    LElement.GetDCPUSource(AWriter);
     if (FModiviers.Count > 0) then
     begin
       if i < Self.FModiviers.Count-1 then
       begin
-        Result := Result + 'set x, pop' + sLineBreak;
-        Result := Result + 'mul x, ' + IntToStr(GetMultiplierForArrayModifier(i)) + sLineBreak;
-        Result := Result + 'set push, x' + sLineBreak;
+        AWriter.Write('set x, pop');
+        AWriter.Write('mul x, ' + IntToStr(GetMultiplierForArrayModifier(i)));
+        AWriter.Write('set push, x');
       end;
     end;
     if i > 0 then
     begin
-      Result := Result + 'set y, pop' + sLineBreak;
-      Result := Result + 'set x, pop' + sLineBreak;
-      Result := Result + 'add x, y' + sLineBreak;
-      Result := Result + 'set push, x' + sLineBreak;
+      AWriter.Write('set y, pop');
+      AWriter.Write('set x, pop');
+      AWriter.Write('add x, y');
+      AWriter.Write('set push, x');
     end;
   end;
   if FModiviers.Count > 0 then  //this will add the adress to the calculated offset
   begin
-    Result := Result + 'set x, pop' + sLineBreak;
-    Result := Result + 'set y, pop' + sLineBreak;
-    Result := Result + 'add x, y' + sLineBreak;
-    Result := Result + 'set push, [x]' + sLineBreak;
+    AWriter.Write('set x, pop');
+    AWriter.Write('set y, pop');
+    AWriter.Write('add x, y');
+    AWriter.Write('set push, [x]');
   end;
 end;
 
@@ -136,7 +124,7 @@ begin
   end;
 end;
 
-function TFactor.GetPushValue: string;
+procedure TFactor.GetPushValue;
 var
   LValToPush: string;
   LParts: TStringDynArray;
@@ -159,8 +147,8 @@ begin
         end
         else
         begin
-          Result := Result + 'set x, ' + Trim(LParts[1]) + sLineBreak;
-          Result := Result + 'add x, ' + Trim(LParts[0]) + sLineBreak;
+          AWriter.Write('set x, ' + Trim(LParts[1]));
+          AWriter.Write('add x, ' + Trim(LParts[0]));
           LValToPush := 'x';
         end;
       end
@@ -176,7 +164,7 @@ begin
       LValToPush := '[' + FVarDeclaration.GetAccessIdentifier() + ']';
     end;
   end;
-  Result := Result + 'set push, ' + LValToPush + sLineBreak;
+  AWriter.Write('set push, ' + LValToPush);
 end;
 
 function TFactor.IsConstant: Boolean;

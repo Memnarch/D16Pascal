@@ -29,7 +29,9 @@ uses
   CaseState in 'CaseState.pas',
   Opcode in 'Opcode.pas',
   CompilerUtil in 'CompilerUtil.pas',
-  CompilerDefines in 'CompilerDefines.pas';
+  CompilerDefines in 'CompilerDefines.pas',
+  WriterIntf in 'WriterIntf.pas',
+  UncountedInterfacedObject in 'UncountedInterfacedObject.pas';
 
 {$R *.res}
 

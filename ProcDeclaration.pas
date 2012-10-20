@@ -3,7 +3,7 @@ unit ProcDeclaration;
 interface
 
 uses
-  Classes, Types, CodeElement, DataType, VarDeclaration, Generics.Collections;
+  Classes, Types, CodeElement, DataType, VarDeclaration, Generics.Collections, WriterIntf;
 
 type
   TArguments = array of TVarDeclaration;
@@ -18,7 +18,7 @@ type
     constructor Create(const AName: string);
     procedure AddResultValue();
     procedure AddLocal(AVar: TVarDeclaration);
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function GetCurrentWordSpaceOfLocals(): Integer;
     property IsFunction: Boolean read GetIsFunction;
@@ -79,34 +79,34 @@ begin
   end;
 end;
 
-function TProcDeclaration.GetDCPUSource: string;
+procedure TProcDeclaration.GetDCPUSource;
 begin
-  Result := ':' + Name + sLineBreak;
+  AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
-    Result := Result + 'set push, j' + sLineBreak;
+    AWriter.Write('set push, j');
     if FLocals.Count > 0 then
     begin
-      Result := Result + 'sub sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()) + sLineBreak;
+      AWriter.Write('sub sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()));
     end;
-    Result := Result + 'set j, sp' + sLineBreak;
+    AWriter.Write('set j, sp');
   end;
-  Result := Result + inherited GetDCPUSource();
+  inherited GetDCPUSource(AWriter);
   if IsFunction and (FLocals.Count > 0) then
   begin
-    Result := Result + 'set a, [' +
-      TVarDeclaration(GetElement('Result', TVarDeclaration)).GetAccessIdentifier() + ']' + sLineBreak;
+    AWriter.Write('set a, [' +
+      TVarDeclaration(GetElement('Result', TVarDeclaration)).GetAccessIdentifier() + ']');
   end;
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
-    Result := Result + 'set sp, j' + sLineBreak;
+    AWriter.Write('set sp, j');
     if FLocals.Count > 0 then
     begin
-      Result := Result + 'add sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()) + sLineBreak;
+      AWriter.Write('add sp, ' + IntToStr(GetCurrentWordSpaceOfLocals()));
     end;
-    Result := Result + 'set j, pop' + sLineBreak;
+    AWriter.Write('set j, pop');
   end;
-  Result := Result + 'set pc, pop' + sLineBreak;
+  AWriter.Write('set pc, pop');
   //Result := SimpleOptimizeDCPUCode(Result);
 end;
 

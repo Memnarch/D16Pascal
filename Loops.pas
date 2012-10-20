@@ -3,7 +3,7 @@ unit Loops;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement;
+  Classes, Types, Generics.Collections, CodeElement, WriterIntf;
 
 type
   TLoop = class(TCodeElement)
@@ -17,12 +17,12 @@ type
 
   TWhileLoop = class(TLoop)
   public
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
   end;
 
   TRepeatLoop = class(TLoop)
   public
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
   end;
 
   TForLoop = class(TLoop)
@@ -31,7 +31,7 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property Assignment: TObjectList<TCodeElement> read FAssignment;
   end;
 
@@ -57,7 +57,7 @@ end;
 
 { TWhileLoop }
 
-function TWhileLoop.GetDCPUSOurce: string;
+procedure TWhileLoop.GetDCPUSOurce;
 var
   LID: string;
   LEnd: string;
@@ -66,34 +66,33 @@ begin
   LID := GetUniqueID();
   LWhile := 'While' + LID;
   LEnd := 'End' + LID;
-  Result := ':' + LWhile + sLineBreak;
-  Result := Result + FRelation.Items[0].GetDCPUSource();
-  Result := Result + 'set x, pop' + sLineBreak;
-  Result := Result + 'ife x, 0' + sLineBreak;
-  Result := Result + 'set pc, ' + LEnd + sLineBreak;
-  Result := OptimizeDCPUCode(Result);
-  //inherited;
-  Result := Result + inherited;
-  Result := Result + 'set pc, ' + LWhile + sLineBreak;
-  Result := Result + ':' + LEnd + sLineBreak;
+  Self.Write(':' + LWhile);
+  FRelation.Items[0].GetDCPUSource(Self);
+  Self.Write('set x, pop');
+  Self.Write('ife x, 0');
+  Self.Write('set pc, ' + LEnd);
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  inherited;
+  AWriter.Write('set pc, ' + LWhile);
+  AWriter.Write(':' + LEnd);
 end;
 
 { TRepeatLoop }
 
-function TRepeatLoop.GetDCPUSOurce: string;
+procedure TRepeatLoop.GetDCPUSOurce;
 var
   LID: string;
-  LRepeat, LRelSource: string;
+  LRepeat: string;
 begin
   LID := GetUniqueID();
   LRepeat := 'Repeat' + LID;
-  Result := ':' + LRepeat + sLineBreak;
-  Result := Result + inherited;
-  LRelSource := FRelation.Items[0].GetDCPUSource();
-  LRelSource := LRelSource + 'set x, pop' + sLineBreak;
-  LRelSource := LRelSource + 'ifn x, 0' + sLineBreak;
-  LRelSource := LRelSource + 'set pc, ' + LRepeat + sLineBreak;
-  Result := Result + OptimizeDCPUCode(LRelSource);
+  AWriter.Write(':' + LRepeat);
+  inherited;
+  FRelation.Items[0].GetDCPUSource(Self);
+  Self.Write('set x, pop');
+  Self.Write('ifn x, 0');
+  Self.Write('set pc, ' + LRepeat);
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
 end;
 
 { TForLoop }
@@ -110,7 +109,7 @@ begin
   inherited;
 end;
 
-function TForLoop.GetDCPUSource: string;
+procedure TForLoop.GetDCPUSource;
 var
   LID: string;
   LFor: string;
@@ -125,18 +124,20 @@ begin
   end;
   LFor := 'for' + LID;
   LEnd := 'end' + LID;
-  Result := OptimizeDCPUCode(Assignment.Items[0].GetDCPUSource());
-  Result := Result + OptimizeDCPUCode(Relation.Items[0].GetDCPUSource());
-  Result := Result + ':' + LFor + sLineBreak;
-  Result := Result + 'set x, pop' + sLineBreak;
-  Result := Result + 'ifg ' + LVar +
-            ', x' + sLineBreak;
-  Result := Result + 'set pc, ' + LEnd + sLineBreak;
-  Result := Result + 'set push, x' + sLineBreak;
-  Result := Result + inherited;
-  Result := Result + 'add ' + LVar + ', 1' + sLineBreak;
-  Result := Result + 'set pc, ' + LFor + sLineBreak;
-  Result := Result + ':' + LEnd + sLineBreak;
+  Assignment.Items[0].GetDCPUSource(Self);
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  Self.FSource := '';//clear it, because we are going to write a new statement to it
+  Relation.Items[0].GetDCPUSource(Self);
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  AWriter.Write(':' + LFor);
+  AWriter.Write('set x, pop');
+  AWriter.Write('ifg ' + LVar + ', x');
+  AWriter.Write('set pc, ' + LEnd);
+  AWriter.Write('set push, x');
+  inherited;
+  AWriter.Write('add ' + LVar + ', 1');
+  AWriter.Write('set pc, ' + LFor);
+  AWriter.Write(':' + LEnd);
 end;
 
 end.

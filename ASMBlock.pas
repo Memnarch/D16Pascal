@@ -3,14 +3,14 @@ unit ASMBlock;
 interface
 
 uses
-  Classes, Types, CodeElement;
+  Classes, Types, CodeElement, WriterIntf;
 
 type
   TASMBlock = class(TCodeElement)
   private
     FSource: string;
   public
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property Source: string read FSource write FSource;
   end;
 
@@ -18,9 +18,9 @@ implementation
 
 { TASMBlock }
 
-function TASMBlock.GetDCPUSource: string;
+procedure TASMBlock.GetDCPUSource;
 begin
-  Result := FSource;
+  AWriter.Write(FSource);
 end;
 
 end.

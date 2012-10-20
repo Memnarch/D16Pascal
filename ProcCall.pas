@@ -3,7 +3,7 @@ unit ProcCall;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement, ProcDeclaration;
+  Classes, Types, Generics.Collections, CodeElement, ProcDeclaration, WriterIntf;
 
 type
   TProcCall = class(TCodeElement)
@@ -13,7 +13,7 @@ type
   public
     constructor Create(); 
     destructor Destroy(); override;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     function GetWordSizeOfLocals(): Integer;
     property ProcDeclaration: TProcDeclaration read FProcDeclaration write FProcDeclaration;
     property Parameters: TObjectList<TCodeElement> read FParameters write FParameters;
@@ -38,13 +38,11 @@ begin
   inherited;
 end;
 
-function TProcCall.GetDCPUSource: string;
+procedure TProcCall.GetDCPUSource;
 var
-  LRelSource: string;
   i, LMax: Integer;
   LRegisters: string;
 begin
-  Result := '';
   LRegisters := 'abc';
   LMax := FParameters.Count;
   if LMax > 3 then
@@ -54,44 +52,45 @@ begin
 
   for i := 1 to LMax do
   begin
-    Result := Result + 'set push, ' + LRegisters[i] + sLineBreak;
+    AWriter.Write('set push, ' + LRegisters[i]);
   end;
 
   for i := FParameters.Count - 1 downto 0 do
   begin
-    LRelSource := FParameters.Items[i].GetDCPUSource();
+    Self.FSource := '';
+    FParameters.Items[i].GetDCPUSource(Self);
     case i of
       0:
       begin
-        LRelSource := LRelSource + 'set a, pop' + sLineBreak;
+        Self.Write('set a, pop');
       end;
       1:
       begin
-        LRelSource := LRelSource + 'set b, pop' + sLineBreak;
+        Self.Write('set b, pop');
       end;
       2:
       begin
-        LRelSource := LRelSource + 'set c, pop' + sLineBreak;
+        Self.Write('set c, pop');
       end;
     end;
-    Result := Result + OptimizeDCPUCode(LRelSource);
+    AWriter.Write(OptimizeDCPUCode(Self.FSource));
   end;
-  Result := Result + 'jsr ' + ProcDeclaration.Name + sLineBreak;
+  AWriter.Write('jsr ' + ProcDeclaration.Name);
   if FParameters.Count-3 > 0 then
   begin
-    Result := Result + 'add sp, ' + IntToStr(FParameters.Count-3) + sLineBreak;
+    AWriter.Write('add sp, ' + IntToStr(FParameters.Count-3));
   end;
   if ProcDeclaration.IsFunction then
   begin
-    Result := Result + 'set x, a' + sLineBreak;
+    AWriter.Write('set x, a');
   end;
   for i := 1 to LMax do
   begin
-    Result := Result + 'set ' + LRegisters[i] + ', pop' + sLineBreak;;
+    AWriter.Write('set ' + LRegisters[i] + ', pop');
   end;
   if ProcDeclaration.IsFunction then
   begin
-    Result := Result + 'set push, x' + sLineBreak;
+    AWriter.Write('set push, x');
   end;
 
 end;

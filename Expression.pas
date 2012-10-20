@@ -3,12 +3,12 @@ unit Expression;
 interface
 
 uses
-  Classes, Types, OpElement;
+  Classes, Types, OpElement, WriterIntf;
 
 type
   TExpression = class(TOpElement)
   public
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
   end;
 
 implementation
@@ -18,43 +18,19 @@ uses
 
 { TExpression }
 
-function TExpression.GetDCPUSOurce: string;
+procedure TExpression.GetDCPUSOurce;
 var
   i: Integer;
 begin
-  Result := '';
   for i := 0 to SubElements.Count - 1 do
   begin
-    Result := Result + SubElements.Items[i].GetDCPUSource();
+    SubElements.Items[i].GetDCPUSource(AWriter);
     if i > 0 then
     begin
-      Result := Result + 'set y, pop' + sLineBreak;
-      Result := Result + 'set x, pop' + sLineBreak;
-//      case Operators.Strings[i-1][1] of
-//        '+':
-//        begin
-//          LOp := 'add';
-//        end;
-//
-//        '-':
-//        begin
-//          LOp := 'sub';
-//        end;
-//
-//        'o':
-//        begin
-//          if SameText(Operators.Strings[i-1], 'or') then
-//          begin
-//            LOp := 'bor';
-//          end;
-//          if SameText(Operators.Strings[i-1], 'xor') then
-//          begin
-//            LOp := 'xor';
-//          end;
-//        end;
-//      end;
-      Result := Result + Operations.Items[i-1].GetAssembly(['x', 'y']);
-      Result := Result + 'set push, x' + sLineBreak;
+      AWriter.Write('set y, pop');
+      AWriter.Write('set x, pop');
+      AWriter.Write(Operations.Items[i-1].GetAssembly(['x', 'y']));
+      AWriter.Write('set push, x');
     end;
   end;
 end;

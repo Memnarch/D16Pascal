@@ -3,11 +3,12 @@ unit Compiler;
 interface
 
 uses
-  Classes, Types, Generics.Collections, SysUtils, Lexer, Token, CodeElement, DataType,
-  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations, Factor, CompilerDefines;
+  Classes, Types, Generics.Collections, SysUtils, UncountedInterfacedObject, Lexer, Token, CodeElement, DataType,
+  VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations,
+  Factor, CompilerDefines, WriterIntf;
 
 type
-  TCompiler = class(TInterfacedObject, IOperations)
+  TCompiler = class(TUncountedInterfacedObject, IOperations, IWriter)
   private
     FLexer: TLexer;
     FUnits: TObjectList<TPascalUnit>;
@@ -22,6 +23,7 @@ type
     FHints: Integer;
     FPeekMode: Boolean;
     FNilDataType: TDataType;
+    FSource: TStringList;
     procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
@@ -71,6 +73,8 @@ type
     function CountUnitName(AName: string): Integer;
     function GetCurrentLine(): Integer;
     procedure RegisterSysUnit();
+    procedure Write(ALine: string);
+    procedure AddMapping();
   public
     constructor Create();
     destructor Destroy(); override;
@@ -107,6 +111,11 @@ uses
   StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
 
 { TCompiler }
+
+procedure TCompiler.AddMapping;
+begin
+
+end;
 
 procedure TCompiler.ClearUnitCache(AName: string);
 var
@@ -252,6 +261,7 @@ begin
   FSearchPath := TStringList.Create();
   FPeekMode := False;
   FNilDataType := TDataType.Create('NilType', 0, rtNilType);
+  FSource := TStringList.Create();
   Initialize();
 end;
 
@@ -260,6 +270,7 @@ begin
   FUnits.Free;
   FSearchPath.Free;
   FOperations.Free;
+  FSource.Free;
   inherited;
 end;
 
@@ -316,12 +327,11 @@ function TCompiler.GetDCPUSource: string;
 var
   LUnit: TPascalUnit;
 begin
-  Result := '';
   for LUnit in FUnits do
   begin
-    Result := Result + LUnit.GetDCPUSource();
+    LUnit.GetDCPUSource(Self);
   end;
-  Result := Trim(Result);
+  Result := Trim(Self.FSource.Text);
 end;
 
 function TCompiler.GetElement(AName: string;
@@ -1330,7 +1340,13 @@ end;
 procedure TCompiler.Reset;
 begin
   FUnits.Clear();
+  FSource.Clear();
   Initialize();
+end;
+
+procedure TCompiler.Write(ALine: string);
+begin
+  FSource.Add(ALine);
 end;
 
 end.

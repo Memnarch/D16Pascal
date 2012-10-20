@@ -3,7 +3,7 @@ unit Assignment;
 interface
 
 uses
-  Classes, Types, CodeElement, VarDeclaration;
+  Classes, Types, CodeElement, VarDeclaration, WriterIntf;
 
 type
   TAssignment = class(TCodeElement)
@@ -11,7 +11,7 @@ type
     FTargetVar: TVarDeclaration;
     FDereference: Boolean;
   public
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property TargetVar: TVarDeclaration read FTargetVar write FTargetVar;
     property Dereference: Boolean read FDereference write FDereference;
   end;
@@ -22,33 +22,32 @@ uses
   StrUtils, Optimizer;
 { TAssignment }
 
-function TAssignment.GetDCPUSource: string;
+procedure TAssignment.GetDCPUSource;
 var
   LAccess: string;
 begin
-  Result := '';
-  Result := Result + SubElements.Items[0].GetDCPUSource();
+  SubElements.Items[0].GetDCPUSource(Self);
   if Dereference then
   begin
-    Result := Result + 'set y, [' + FTargetVar.GetAccessIdentifier() + ']' + sLineBreak;
-    Result := Result + 'set x, pop' + sLineBreak;
-    Result := Result + 'set [y], x' + sLineBreak;
+    Self.Write('set y, [' + FTargetVar.GetAccessIdentifier() + ']');
+    Self.Write('set x, pop');
+    Self.Write('set [y], x');
   end
   else
   begin
     LAccess := FTargetVar.GetAccessIdentifier;
     if AnsiIndexText(LAccess, ['a', 'b', 'c']) >= 0 then
     begin
-      Result := Result + 'set x, pop' + sLineBreak;
-      Result := Result + 'set ' + LAccess + ', x' + sLineBreak;
+      Self.Write('set x, pop');
+      Self.Write('set ' + LAccess + ', x');
     end
     else
     begin
-      Result := Result + 'set x, pop' + sLineBreak;
-      Result := Result + 'set [' + LAccess + '], x' + sLineBreak;
+      Self.Write('set x, pop');
+      Self.Write('set [' + LAccess + '], x');
     end;
   end;
-  Result := OptimizeDCPUCode(Result);
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
 end;
 
 end.

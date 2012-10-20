@@ -3,7 +3,7 @@ unit Condition;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement;
+  Classes, Types, Generics.Collections, CodeElement, WriterIntf;
 
 type
   TCondition = class(TCodeElement)
@@ -13,7 +13,7 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     property ElseElements: TObjectList<TCodeElement> read FElseElements;
     property Relation: TObjectList<TCodeElement> read FRelation;
   end;
@@ -39,7 +39,7 @@ begin
   inherited;
 end;
 
-function TCondition.GetDCPUSource: string;
+procedure TCondition.GetDCPUSource;
 var
   LID, LEnd, LElse: string;
   LElement: TCodeElement;
@@ -47,29 +47,29 @@ begin
   LID := GetUniqueID();
   LEnd := 'End' + LID;
   LElse := 'Else' +  LID;
-  Result := FRelation.Items[0].GetDCPUSource();
-  Result := Result + 'set x, pop' + sLineBreak;
-  Result := Result + 'ife x, 0' + sLineBreak;
-  Result := OptimizeDCPUCode(Result);
+  FRelation.Items[0].GetDCPUSource(Self);
+  Self.Write('set x, pop');
+  Self.Write('ife x, 0');
+  AWriter.Write(OptimizeDCPUCode(Self.FSource));
   if FElseElements.Count > 0 then
   begin
-    Result := Result + 'set pc, ' + LElse + sLineBreak;
+    AWriter.Write('set pc, ' + LElse);
   end
   else
   begin
-    Result := Result + 'set pc, ' + LEnd + sLineBreak;
+    AWriter.Write('set pc, ' + LEnd);
   end;
-  Result := Result + inherited;
+  inherited;
   if FElseElements.Count > 0 then
   begin
-    Result := Result + 'set pc, ' + LEnd + sLineBreak;
-    Result := Result + ':' + LElse + sLineBreak;
+    AWriter.Write('set pc, ' + LEnd);
+    AWriter.Write(':' + LElse);
     for LElement in FElseElements do
     begin
-      Result := Result + LElement.GetDCPUSource();
+      LElement.GetDCPUSource(AWriter);
     end;
   end;
-  Result := Result + ':' + LEnd + sLineBreak;
+  AWriter.Write(':' + LEnd);
 end;
 
 end.

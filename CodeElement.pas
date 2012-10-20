@@ -3,22 +3,26 @@ unit CodeElement;
 interface
 
 uses
-  Classes, Types, Generics.Collections;
+  Classes, Types, Generics.Collections, UncountedInterfacedObject, WriterIntf;
 
 type
 
   TCodeElementClass = class of TCodeElement;
 
-  TCodeElement = class
+  TCodeElement = class(TUncountedInterfacedObject, IWriter)
   private
     FName: string;
     FSubElements: TObjectList<TCodeElement>;
     FLine: Integer;
+  protected
+    FSource: string;
+    procedure Write(ALine: string); virtual;
+    procedure AddMapping(); virtual;
   public
     constructor Create(AName: string);
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function GetUniqueID(APrefix: string = ''): string;
-    function GetDCPUSource(): string; virtual;
+    procedure GetDCPUSource(AWriter: IWriter); virtual;
     property Name: string read FName write FName;
     property SubElements: TObjectList<TCodeElement> read FSubElements;
     property Line: Integer read FLine write FLine;
@@ -35,6 +39,11 @@ var
 
 { TCodeElement }
 
+procedure TCodeElement.AddMapping;
+begin
+// we ignore it here :P
+end;
+
 constructor TCodeElement.Create(AName: string);
 begin
   FName := AName;
@@ -42,14 +51,13 @@ begin
   FSubElements := TObjectList<TCodeElement>.Create();
 end;
 
-function TCodeElement.GetDCPUSource: string;
+procedure TCodeElement.GetDCPUSource;
 var
   LElement: TCodeElement;
 begin
-  Result := '';
   for LElement in FSubElements do
   begin
-    Result := Result + LElement.GetDCPUSource();
+    LElement.GetDCPUSource(AWriter);
   end;
 end;
 
@@ -73,6 +81,11 @@ function TCodeElement.GetUniqueID(APrefix: string = ''): string;
 begin
   Result := APrefix+IntToHex(GID, 4);
   Inc(GID);
+end;
+
+procedure TCodeElement.Write(ALine: string);
+begin
+  FSource := FSource + ALine + sLineBreak;
 end;
 
 end.

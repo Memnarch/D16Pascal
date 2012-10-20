@@ -3,7 +3,7 @@ unit VarDeclaration;
 interface
 
 uses
-  Classes, Types, CodeElement, DataType, Operations;
+  Classes, Types, CodeElement, DataType, Operations, WriterIntf;
 
 type
   TVarDeclaration = class(TCodeElement)
@@ -16,7 +16,7 @@ type
   public
     constructor Create(AName: string; AType: TDataType);
     function GetAccessIdentifier(): string;
-    function GetDCPUSource(): string; override;
+    procedure GetDCPUSource(AWriter: IWriter); override;
     function IsParameter(): Boolean;
     function IsLocal(): Boolean;
     property DataType: TDataType read FDataType;
@@ -88,28 +88,29 @@ begin
   end;
 end;
 
-function TVarDeclaration.GetDCPUSource: string;
+procedure TVarDeclaration.GetDCPUSource;
 var
   i, LSize: Integer;
+  LLine: string;
 begin
-  Result := ':' + GetAccessIdentifier() + ' dat ';
+  LLine := ':' + GetAccessIdentifier() + ' dat ';
   if DataType.RawType = rtArray then
   begin
     LSize := DataType.GetRamWordSize();
     for i := 0 to LSize - 1 do
     begin
-      Result := Result + '0x0';
+      LLine := LLine + '0x0';
       if i < LSize - 1 then
       begin
-        Result := Result + ', ';
+        LLine := LLine + ', ';
       end;
     end;
   end
   else
   begin
-    Result := Result + FDefaultValue;
+    LLine := LLine + FDefaultValue;
   end;
-  Result := Result + sLineBreak;
+  AWriter.Write(LLine);
 end;
 
 function TVarDeclaration.IsLocal: Boolean;
