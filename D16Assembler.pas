@@ -418,17 +418,10 @@ begin
   LParamA := TParameter.Create();
   LParamB := TParameter.Create();
   LOp := GetOpCode(FLexer.GetToken('', ttIdentifier).Content);
-  if FLexer.PeekToken.IsContent(',') then
-  begin
-    FLexer.GetToken(','); // who had the idea to place commas AFTER a fucking mnemonic? WHO?!
-  end;
   ParseParameter(LParamA);
   if LOP.ArgCount = 2 then
   begin
-    if FLexer.PeekToken.IsContent(',') then
-    begin
-      FLexer.GetToken(',');
-    end;
+    FLexer.GetToken(',');
     ParseParameter(LParamB, False);
   end;
   if LOp.IsBasic then
