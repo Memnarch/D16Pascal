@@ -15,11 +15,13 @@ type
     FSubElements: TObjectList<TCodeElement>;
     FLine: Integer;
   protected
-    FSource: string;
+    FSource: TStringList;
     procedure Write(ALine: string); virtual;
+    procedure WriteList(AList: TStrings); virtual;
     procedure AddMapping(); virtual;
   public
     constructor Create(AName: string);
+    destructor Destroy(); override;
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function GetUniqueID(APrefix: string = ''): string;
     procedure GetDCPUSource(AWriter: IWriter); virtual;
@@ -49,6 +51,13 @@ begin
   FName := AName;
   FLine := -1;
   FSubElements := TObjectList<TCodeElement>.Create();
+  FSource := TStringList.Create();
+end;
+
+destructor TCodeElement.Destroy;
+begin
+  FSource.Free;
+  inherited;
 end;
 
 procedure TCodeElement.GetDCPUSource;
@@ -85,7 +94,12 @@ end;
 
 procedure TCodeElement.Write(ALine: string);
 begin
-  FSource := FSource + ALine + sLineBreak;
+  FSource.Add(ALine);
+end;
+
+procedure TCodeElement.WriteList(AList: TStrings);
+begin
+  FSource.AddStrings(AList);
 end;
 
 end.

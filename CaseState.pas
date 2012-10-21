@@ -12,7 +12,7 @@ type
     FRelation: TObjectList<TCodeElement>;
     FElseCase: TObjectList<TCodeElement>;
     FId: string;
-    function GetJumpTable(): string;
+    procedure GetJumpTable(AWriter: IWriter);
   public
     constructor Create(); reintroduce;
     destructor Destroy(); override;
@@ -60,9 +60,10 @@ var
   i: Integer;
 begin
   Relation.Items[0].GetDCPUSource(Self);
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
   AWriter.Write('set x, pop');
-  AWriter.Write(GetJumpTable());
+  GetJumpTable(AWriter);
   for i := 0 to Cases.Count - 1 do
   begin
     AWriter.Write(':case' + IntToStr(i) + FId);
@@ -77,14 +78,13 @@ begin
   AWriter.Write(':end' + FId);
 end;
 
-function TCaseStatement.GetJumpTable: string;
+procedure TCaseStatement.GetJumpTable;
 var
   LCase: TCase;
   LFactor: TFactor;
   i, k: Integer;
   LJumpLabel: string;
 begin
-  Result := '';
   for i := 0 to FCases.Count - 1 do
   begin
     LJumpLabel := 'case' + IntToStr(i) + FId;
@@ -94,22 +94,22 @@ begin
       LFactor := TFactor(LCase.ConstValues.Items[k]);
       if LFactor.IsConstant then
       begin
-        Result := Result + 'ife x, ' + LFactor.Value + sLineBreak;
+        AWriter.Write('ife x, ' + LFactor.Value);
       end
       else
       begin
-        Result := Result + 'ife x, ' + LFactor.VarDeclaration.DefaultValue + sLineBreak;
+        AWriter.Write('ife x, ' + LFactor.VarDeclaration.DefaultValue);
       end;
-      Result := Result + 'set pc, ' + LJumpLabel + sLineBreak;
+      AWriter.Write('set pc, ' + LJumpLabel);
     end;
   end;
   if ElseCase.Count > 0 then
   begin
-    Result := Result + 'set pc, ' + 'else' + FId + sLineBreak;
+    AWriter.Write('set pc, ' + 'else' + FId);
   end
   else
   begin
-    Result := Result + 'set pc, ' + 'end' + FId + sLineBreak;
+    AWriter.Write('set pc, ' + 'end' + FId);
   end;
 end;
 

@@ -74,6 +74,7 @@ type
     function GetCurrentLine(): Integer;
     procedure RegisterSysUnit();
     procedure Write(ALine: string);
+    procedure WriteList(AList: TStrings);
     procedure AddMapping();
   public
     constructor Create();
@@ -461,10 +462,11 @@ procedure TCompiler.ParseASMBlock(AScope: TObjectList<TCodeElement>);
 var
   LToken: TToken;
   LBlock: TASMBlock;
-  LContent: string;
+  LContent, LLine: string;
   LVar: TVarDeclaration;
 begin
   LBlock := TASMBlock.Create('');
+  LLine := '';
   AScope.Add(LBlock);
   FLexer.GetToken('asm');
   while not ((FLexer.PeekToken.IsContent('end') and (not FLexer.PeekToken.FollowedByNewLine) and FLexer.AHeadToken.IsContent(';'))) do
@@ -483,7 +485,7 @@ begin
       begin
         Break;
       end;
-      LBlock.Source := LBlock.Source + sLineBreak;
+//      LBlock.Source := LBlock.Source + sLineBreak;
       Continue;
     end;
     LToken := FLexer.GetToken();
@@ -508,12 +510,16 @@ begin
         LContent := '"' + LContent + '"';
       end;
     end;
-    LBlock.Source := LBlock.Source + LContent;
-    LBlock.Source := LBlock.Source + ' ';
+    LLine := LLine + LContent + ' ';
     if LToken.FollowedByNewLine then
     begin
-      LBlock.Source := LBlock.Source + sLineBreak;
+      LBlock.Source.Add(LLine);
+      LLine := '';
     end;
+  end;
+  if LLine <> '' then
+  begin
+    LBlock.Source.Add(LLine);
   end;
   FLexer.GetToken('end');
   FLexer.GetToken(';');
@@ -1347,6 +1353,11 @@ end;
 procedure TCompiler.Write(ALine: string);
 begin
   FSource.Add(ALine);
+end;
+
+procedure TCompiler.WriteList(AList: TStrings);
+begin
+  FSource.AddStrings(AList);
 end;
 
 end.

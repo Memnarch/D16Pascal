@@ -57,7 +57,7 @@ begin
 
   for i := FParameters.Count - 1 downto 0 do
   begin
-    Self.FSource := '';
+    Self.FSource.Clear();
     FParameters.Items[i].GetDCPUSource(Self);
     case i of
       0:
@@ -73,7 +73,8 @@ begin
         Self.Write('set c, pop');
       end;
     end;
-    AWriter.Write(OptimizeDCPUCode(Self.FSource));
+    OptimizeDCPUCode(Self.FSource, Self.FSource);
+    AWriter.WriteList(Self.FSource);
   end;
   AWriter.Write('jsr ' + ProcDeclaration.Name);
   if FParameters.Count-3 > 0 then

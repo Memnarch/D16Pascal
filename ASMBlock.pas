@@ -7,11 +7,9 @@ uses
 
 type
   TASMBlock = class(TCodeElement)
-  private
-    FSource: string;
   public
     procedure GetDCPUSource(AWriter: IWriter); override;
-    property Source: string read FSource write FSource;
+    property Source: TStringList read FSource;
   end;
 
 implementation
@@ -20,7 +18,7 @@ implementation
 
 procedure TASMBlock.GetDCPUSource;
 begin
-  AWriter.Write(FSource);
+  AWriter.WriteList(FSource);
 end;
 
 end.

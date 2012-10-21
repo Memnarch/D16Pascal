@@ -50,7 +50,8 @@ begin
   FRelation.Items[0].GetDCPUSource(Self);
   Self.Write('set x, pop');
   Self.Write('ife x, 0');
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
   if FElseElements.Count > 0 then
   begin
     AWriter.Write('set pc, ' + LElse);

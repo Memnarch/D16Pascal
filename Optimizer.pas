@@ -2,7 +2,10 @@ unit Optimizer;
 
 interface
 
-function OptimizeDCPUCode(AIn: string): string;
+uses
+  Classes, Types;
+
+procedure OptimizeDCPUCode(AIn, AOut: TStrings);
 function SimpleOptimizeDCPUCode(AIn: string): string;
 
 var
@@ -11,7 +14,7 @@ var
 implementation
 
 uses
-  Classes, Types, SysUtils, StrUtils;
+  SysUtils, StrUtils;
 
 
 procedure SplitLine(ALine: string; var AOp, ATarget, ASource: string);
@@ -263,11 +266,11 @@ begin
         ALines.Strings[i+1] := LOpB + ' ' + LTargetB + ', ';
         if StartsText('[', LSourceB) then
         begin
-          ALines.Strings[i+1] := ALines.Strings[i+1] + '[' + LSourceA + ']' + sLineBreak;
+          ALines.Strings[i+1] := ALines.Strings[i+1] + '[' + LSourceA + ']';
         end
         else
         begin
-          ALines.Strings[i+1] := ALines.Strings[i+1]  + LSourceA + sLineBreak;
+          ALines.Strings[i+1] := ALines.Strings[i+1]  + LSourceA;
         end;
       end
       else
@@ -376,13 +379,13 @@ begin
   RemoveEmptyLines(ALines);
 end;
 
-function OptimizeDCPUCode(AIn: string): string;
+procedure OptimizeDCPUCode(AIn, AOut: TStrings);
 var
   LLines: TStringList;
   LLastCount: Integer;
 begin
   LLines := TStringList.Create();
-  LLines.Text := AIn;
+  LLines.Assign(AIn);
   LLastCount := 0;
   if DoOptimization then
   begin
@@ -399,7 +402,7 @@ begin
       OptimizeMovNopIf(LLines);
     end;
   end;
-  Result := LLines.Text;
+  AOut.Assign(LLines);
   LLines.Free;
 end;
 

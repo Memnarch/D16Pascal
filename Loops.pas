@@ -71,7 +71,8 @@ begin
   Self.Write('set x, pop');
   Self.Write('ife x, 0');
   Self.Write('set pc, ' + LEnd);
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
   inherited;
   AWriter.Write('set pc, ' + LWhile);
   AWriter.Write(':' + LEnd);
@@ -92,7 +93,8 @@ begin
   Self.Write('set x, pop');
   Self.Write('ifn x, 0');
   Self.Write('set pc, ' + LRepeat);
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
 end;
 
 { TForLoop }
@@ -125,10 +127,12 @@ begin
   LFor := 'for' + LID;
   LEnd := 'end' + LID;
   Assignment.Items[0].GetDCPUSource(Self);
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
-  Self.FSource := '';//clear it, because we are going to write a new statement to it
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
+  Self.FSource.Clear; //clear it, because we are going to write a new statement to it
   Relation.Items[0].GetDCPUSource(Self);
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
   AWriter.Write(':' + LFor);
   AWriter.Write('set x, pop');
   AWriter.Write('ifg ' + LVar + ', x');

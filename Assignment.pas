@@ -47,7 +47,8 @@ begin
       Self.Write('set [' + LAccess + '], x');
     end;
   end;
-  AWriter.Write(OptimizeDCPUCode(Self.FSource));
+  OptimizeDCPUCode(Self.FSource, Self.FSource);
+  AWriter.WriteList(Self.FSource);
 end;
 
 end.
