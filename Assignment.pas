@@ -26,6 +26,7 @@ procedure TAssignment.GetDCPUSource;
 var
   LAccess: string;
 begin
+  AWriter.AddMapping(Self);
   SubElements.Items[0].GetDCPUSource(Self);
   if Dereference then
   begin

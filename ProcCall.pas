@@ -43,6 +43,7 @@ var
   i, LMax: Integer;
   LRegisters: string;
 begin
+  AWriter.AddMapping(Self);
   LRegisters := 'abc';
   LMax := FParameters.Count;
   if LMax > 3 then

@@ -93,6 +93,7 @@ var
   i, LSize: Integer;
   LLine: string;
 begin
+  AWriter.AddMapping(Self);
   LLine := ':' + GetAccessIdentifier() + ' dat ';
   if DataType.RawType = rtArray then
   begin

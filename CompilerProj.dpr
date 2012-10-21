@@ -31,7 +31,8 @@ uses
   CompilerUtil in 'CompilerUtil.pas',
   CompilerDefines in 'CompilerDefines.pas',
   WriterIntf in 'WriterIntf.pas',
-  UncountedInterfacedObject in 'UncountedInterfacedObject.pas';
+  UncountedInterfacedObject in 'UncountedInterfacedObject.pas',
+  LineMapping in 'LineMapping.pas';
 
 {$R *.res}
 

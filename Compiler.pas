@@ -5,7 +5,7 @@ interface
 uses
   Classes, Types, Generics.Collections, SysUtils, UncountedInterfacedObject, Lexer, Token, CodeElement, DataType,
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations,
-  Factor, CompilerDefines, WriterIntf;
+  Factor, CompilerDefines, WriterIntf, LineMapping;
 
 type
   TCompiler = class(TUncountedInterfacedObject, IOperations, IWriter)
@@ -24,6 +24,8 @@ type
     FPeekMode: Boolean;
     FNilDataType: TDataType;
     FSource: TStringList;
+    FCodeGeneratingUnit: string;
+    FLineMapping: TObjectList<TLineMapping>;
     procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
@@ -75,7 +77,7 @@ type
     procedure RegisterSysUnit();
     procedure Write(ALine: string);
     procedure WriteList(AList: TStrings);
-    procedure AddMapping();
+    procedure AddMapping(AElement: TObject; AOffset: Integer = 0);
   public
     constructor Create();
     destructor Destroy(); override;
@@ -87,6 +89,7 @@ type
     procedure Reset();
     function PeekCompile(ASource, AUnitName: string; var AUnit: TPascalUnit): Boolean;
     function GetUnitByName(AName: string): TPascalUnit;
+    function GetMappingByASMLine(ALine: Integer): TLineMapping;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
     property OnMessage: TOnMessage read FOnMessage write FOnMessage;
     property Errors: Integer read FErrors;
@@ -95,6 +98,7 @@ type
     property Hints: Integer read FHints;
     property PeekMode: Boolean read FPeekMode write FPeekMode;
     property Units: TObjectList<TPascalUnit> read FUnits;
+    property LineMapping: TObjectList<TLineMapping> read FLineMapping;
   end;
 
 const
@@ -114,8 +118,18 @@ uses
 { TCompiler }
 
 procedure TCompiler.AddMapping;
+var
+  LMapping: TLineMapping;
 begin
-
+  LMapping := TLineMapping.Create();
+  try
+    LMapping.UnitLine := TCodeElement(AElement).Line + AOffset;
+    LMapping.ASMLine := FSource.Count;
+    LMapping.ElementName := TCodeElement(AElement).Name;
+    LMapping.D16UnitName := FCodeGeneratingUnit;
+  finally
+    FLineMapping.Add(LMapping);
+  end;
 end;
 
 procedure TCompiler.ClearUnitCache(AName: string);
@@ -263,6 +277,7 @@ begin
   FPeekMode := False;
   FNilDataType := TDataType.Create('NilType', 0, rtNilType);
   FSource := TStringList.Create();
+  FLineMapping := TObjectList<TLineMapping>.Create();
   Initialize();
 end;
 
@@ -272,6 +287,7 @@ begin
   FSearchPath.Free;
   FOperations.Free;
   FSource.Free;
+  FLineMapping.Free;
   inherited;
 end;
 
@@ -330,6 +346,7 @@ var
 begin
   for LUnit in FUnits do
   begin
+    FCodeGeneratingUnit := LUnit.Name;
     LUnit.GetDCPUSource(Self);
   end;
   Result := Trim(Self.FSource.Text);
@@ -356,6 +373,21 @@ begin
     if Assigned(LElement) then
     begin
       Result := LElement;
+      Break;
+    end;
+  end;
+end;
+
+function TCompiler.GetMappingByASMLine(ALine: Integer): TLineMapping;
+var
+  LMapping: TLineMapping;
+begin
+  Result := nil;
+  for LMapping in FLineMapping do
+  begin
+    if LMapping.ASMLine = ALine then
+    begin
+      Result := LMapping;
       Break;
     end;
   end;
@@ -468,6 +500,7 @@ begin
   LBlock := TASMBlock.Create('');
   LLine := '';
   AScope.Add(LBlock);
+  LBlock.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('asm');
   while not ((FLexer.PeekToken.IsContent('end') and (not FLexer.PeekToken.FollowedByNewLine) and FLexer.AHeadToken.IsContent(';'))) do
   begin
@@ -1347,6 +1380,7 @@ procedure TCompiler.Reset;
 begin
   FUnits.Clear();
   FSource.Clear();
+  FLineMapping.Clear;
   Initialize();
 end;
 

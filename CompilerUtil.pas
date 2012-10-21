@@ -10,7 +10,7 @@ procedure CompileFile(AFile: string; AOptimize, AAssemble, ABuildModule, AUseBig
 implementation
 
 uses
-  Classes, Types, SysUtils, Compiler, D16Assembler, Optimizer;
+  Classes, Types, SysUtils, Compiler, D16Assembler, Optimizer, LineMapping;
 
 
 
@@ -36,6 +36,7 @@ var
   LMainPath, LSavePath: string;
   LFile: string;
   LOut: TStringList;
+  LMapping: TLineMapping;
 begin
   LAssembler := TD16Assembler.Create();
   LCompiler := TCompiler.Create();
@@ -73,7 +74,16 @@ begin
       except
         on e: Exception do
         begin
-          AOnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+          LMapping := LCompiler.GetMappingByASMLine(LAssembler.Lexer.PeekToken.FoundInLine);
+          if Assigned(LMapping)  then
+          begin
+            AOnMessage(e.Message, ChangeFileExt(LMapping.D16UnitName, '.pas'), LMapping.UnitLine, mlFatal);
+          end
+          else
+          begin
+            AOnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+          end;
+
         end;
       end;
     end;

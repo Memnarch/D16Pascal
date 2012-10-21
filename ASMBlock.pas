@@ -17,8 +17,17 @@ implementation
 { TASMBlock }
 
 procedure TASMBlock.GetDCPUSource;
+var
+  LLIne: string;
+  LOffset: Integer;
 begin
-  AWriter.WriteList(FSource);
+  LOffset := 1;
+  for LLine in FSource do
+  begin
+    AWriter.AddMapping(Self, LOffset);
+    AWriter.Write(LLIne);
+    Inc(LOffset);
+  end;
 end;
 
 end.
