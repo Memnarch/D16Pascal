@@ -36,6 +36,8 @@ type
     FLabels: TStringList;
     FUseBigEdian: Boolean;
     FHexDumpPath: string;
+    FFirstLabelOccurence: TStringList;
+    FErrorLine: Integer;
     procedure ParseLabel();
     procedure ParseDat();
     procedure ParseOp();
@@ -50,6 +52,7 @@ type
     procedure SwapEndianForAll();
     procedure HexDump(AFile: string);
     procedure AddAdressToRelocTable(AWord: Word);
+    function GetErrorLine: Integer;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -65,6 +68,7 @@ type
     function GetAdressForLabel(ALabel: string): Word;
     property Memory: TD16Ram read FMemory;
     property Lexer: TLexer read FLexer;
+    property ErrorLine: Integer read GetErrorLine;
     property PC: Word read FPC;
     property OpCodes: TObjectlist<TOpCode> read FOpCodes;
     property AdressStack: TStringList read FAdressStack;
@@ -150,11 +154,14 @@ constructor TD16Assembler.Create;
 begin
   FLexer := TLexer.Create;
   FLexer.SimpleTokensOnly := True;
+  FFirstLabelOccurence := TStringList.Create();
+  FFirstLabelOccurence.Sorted := True;
   FOpCodes := TObjectList<TOpCode>.Create();
   FAdressStack := TStringList.Create();
   FLabels := TStringList.Create();
   FRelocTable := TStringList.Create();
   FUseBigEdian := False;
+  FErrorLine := -1;
   InitOpcodes();
 end;
 
@@ -165,13 +172,38 @@ begin
   FLabels.Free;
   FAdressStack.Free;
   FRelocTable.Free;
+  FFirstLabelOccurence.Free;
   inherited;
 end;
 
 function TD16Assembler.GetAdressForLabel(ALabel: string): Word;
+var
+  LResult: Integer;
+  LIndex: Integer;
 begin
   AddAdressToRelocTable(FPC);
-  Result := StrToInt(FLabels.Values[ALabel]);
+  if not TryStrToInt(FLabels.Values[ALabel], LResult) then
+  begin
+    LIndex := FFirstLabelOccurence.IndexOfName(ALabel);
+    if LIndex > -1 then
+    begin
+      FErrorLine := StrToIntDef(FFirstLabelOccurence.ValueFromIndex[LIndex], -1);
+    end;
+    raise EAbort.Create('Undeclared Label ' + QuotedStr(ALabel));
+  end;
+  Result := LResult;
+end;
+
+function TD16Assembler.GetErrorLine: Integer;
+begin
+  if FErrorLine > -1 then
+  begin
+    Result := FErrorLine;
+  end
+  else
+  begin
+    Result := FLexer.PeekToken.FoundInLine;
+  end;
 end;
 
 function TD16Assembler.GetOpCode(AName: string): TOpCode;
@@ -522,6 +554,10 @@ procedure TD16Assembler.PushAdressForLabel(AAdress: Word; ALabel: string);
 begin
   FAdressStack.Add(IntToStr(AAdress) + '=' + ALabel);
   AddAdressToRelocTable(AAdress);
+  if FFirstLabelOccurence.IndexOfName(ALabel) < 0 then
+  begin
+    FFirstLabelOccurence.Add(ALabel + '=' + IntToStr(FLexer.PeekToken.FoundInLine - 1));//-1 because at this point, we are one token ahead of its original occurence
+  end;
 end;
 
 procedure TD16Assembler.RegisterLabel(AName: string);

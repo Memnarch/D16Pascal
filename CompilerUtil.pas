@@ -74,16 +74,15 @@ begin
       except
         on e: Exception do
         begin
-          LMapping := LCompiler.GetMappingByASMLine(LAssembler.Lexer.PeekToken.FoundInLine);
+          LMapping := LCompiler.GetMappingByASMLine(LAssembler.ErrorLine);
           if Assigned(LMapping)  then
           begin
             AOnMessage(e.Message, ChangeFileExt(LMapping.D16UnitName, '.pas'), LMapping.UnitLine, mlFatal);
           end
           else
           begin
-            AOnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.Lexer.PeekToken.FoundInLine, mlFatal);
+            AOnMessage(e.Message, ChangeFileExt(LFile, '.asm'), LAssembler.ErrorLine, mlFatal);
           end;
-
         end;
       end;
     end;
