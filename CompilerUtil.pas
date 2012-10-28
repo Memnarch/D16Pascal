@@ -37,6 +37,7 @@ var
   LFile: string;
   LOut: TStringList;
   LMapping: TLineMapping;
+  LDebugMapping: TSTringList;
 begin
   LAssembler := TD16Assembler.Create();
   LCompiler := TCompiler.Create();
@@ -63,6 +64,7 @@ begin
         begin
           AOnMessage('Using BigEndian', '', 0, mlNone);
         end;
+        LAssembler.UseLineMappings(LCompiler.LineMapping);
         LAssembler.AssembleFile(LSavePath);
         LAssembler.SaveTo(ChangeFileExt(LSavePath, '.d16'));
         AOnMessage('Assembled to: '  + ChangeFileExt(LSavePath, '.d16'), '', 0, mlNone);
@@ -91,6 +93,12 @@ begin
   AOnMessage('Errors: ' + IntToSTr(LCompiler.Errors), '', 0, mlNone);
   AOnMessage('Warnings: ' + IntToSTr(LCompiler.Warnings), '', 0, mlNone);
   AOnMessage('finished', '', 0, mlNone);
+  LDebugMapping := TStringList.Create();
+  for LMapping in LCompiler.LineMapping do
+  begin
+    LDebugMapping.Add(LMapping.AsText);
+  end;
+  LDebugMapping.SaveToFile(ExtractFilePath(AFile) + '\Mapping.txt');
   LCompiler.Free;
   LAssembler.Free;
   LOut.Free;

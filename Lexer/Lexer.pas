@@ -35,6 +35,7 @@ type
     procedure LoadFromString(AString: string);
     function GetToken(AContent: string = ''; AType: TTokenType = ttNone): TToken;
     function PeekToken(): TToken;
+    function PreviousToken(): TToken;
     function AHeadToken(): TToken;
     property Tokens: TObjectList<TToken> read FTokens;
     property EOF: Boolean read GetEOF;
@@ -398,6 +399,18 @@ begin
     raise EAbort.Create('Unexpected EOF');
   end;
   Result := FTokens.Items[FTokenIndex];
+end;
+
+function TLexer.PreviousToken: TToken;
+begin
+  if FTokenIndex > 0 then
+  begin
+    Result := FTokens.Items[FTokenIndex-1];
+  end
+  else
+  begin
+    Result := FTokens.Items[0];
+  end;
 end;
 
 end.

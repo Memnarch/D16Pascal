@@ -3,7 +3,7 @@ unit D16Assembler;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SmartInspect;
+  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SmartInspect, LineMapping;
 
 type
   TD16Ram = array[0..$FFFE] of Word;
@@ -36,7 +36,9 @@ type
     FLabels: TStringList;
     FUseBigEdian: Boolean;
     FHexDumpPath: string;
+    FLineMapping: TObjectList<TLineMapping>;
     FFirstLabelOccurence: TStringList;
+    FCurrentMapping: Integer;
     FErrorLine: Integer;
     procedure ParseLabel();
     procedure ParseDat();
@@ -52,10 +54,12 @@ type
     procedure SwapEndianForAll();
     procedure HexDump(AFile: string);
     procedure AddAdressToRelocTable(AWord: Word);
+    procedure UpdateLineMapping();
     function GetErrorLine: Integer;
   public
     constructor Create();
     destructor Destroy(); override;
+    procedure UseLineMappings(AMappings: TObjectList<TLineMapping>);
     procedure AssembleSource(ASource: string);
     procedure AssembleFile(ASource: string);
     procedure WriteWord(AWord: Word);
@@ -161,7 +165,9 @@ begin
   FLabels := TStringList.Create();
   FRelocTable := TStringList.Create();
   FUseBigEdian := False;
+  FLineMapping := TObjectList<TLineMapping>.Create(False);
   FErrorLine := -1;
+  FCurrentMapping := -1;
   InitOpcodes();
 end;
 
@@ -173,6 +179,7 @@ begin
   FAdressStack.Free;
   FRelocTable.Free;
   FFirstLabelOccurence.Free;
+  FLineMapping.Free;
   inherited;
 end;
 
@@ -439,6 +446,7 @@ procedure TD16Assembler.ParseLabel;
 begin
   FLexer.GetToken(':');
   RegisterLabel(FLexer.GetToken('', ttIdentifier).Content);
+  UpdateLineMapping();
 end;
 
 procedure TD16Assembler.ParseOp;
@@ -636,6 +644,31 @@ begin
   AStream.Write(FMemory, FPC*2);
 end;
 
+procedure TD16Assembler.UpdateLineMapping;
+var
+  LLIne: Integer;
+begin
+  LLine := FLexer.PreviousToken.FoundInLine;
+  if (FCurrentMapping > -1) and (FCurrentMapping < FLineMapping.Count)
+    and (FLineMapping.Items[FCurrentMapping].ASMLine = LLine) then
+  begin
+    FLineMapping.Items[FCurrentMapping].MemoryAddress := FPC;
+    Inc(FCurrentMapping);
+  end;
+end;
+
+procedure TD16Assembler.UseLineMappings(AMappings: TObjectList<TLineMapping>);
+var
+  LMapping: TLineMapping;
+begin
+  FLineMapping.Clear;
+  FCurrentMapping := 0;
+  for LMapping in AMappings do
+  begin
+    FLineMapping.Add(LMapping);
+  end;
+end;
+
 procedure TD16Assembler.WriteRelocationTableToStream(AStream: TStream);
 var
   LWord: Word;
@@ -667,6 +700,7 @@ end;
 procedure TD16Assembler.WriteWord(AWord: Word);
 begin
   FMemory[FPC] := AWord;
+  UpdateLineMapping();
   Inc(FPC);
 end;
 
