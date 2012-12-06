@@ -3,7 +3,7 @@ unit Lexer;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Token, SiAuto, SmartInspect;
+  Classes, Types, SysUtils, Generics.Collections, Token;// SiAuto, SmartInspect;
 
 type
   TLexer = class
@@ -316,7 +316,8 @@ begin
   begin
     if FPos >= Length(FSource) then
     begin
-      SiMain.LogMessage('fail');
+//      SiMain.LogMessage('fail');
+//      raise Exception.Create('Fail in Lexer');
       LChar := GetChar();
     end;
     case GetChar of

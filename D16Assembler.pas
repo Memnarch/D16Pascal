@@ -3,7 +3,7 @@ unit D16Assembler;
 interface
 
 uses
-  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, SiAuto, SmartInspect, LineMapping;
+  Classes, Types, SysUtils, Generics.Collections, Lexer, OpCode, LineMapping;
 
 type
   TD16Ram = array[0..$FFFE] of Word;
