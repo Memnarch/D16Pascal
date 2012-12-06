@@ -26,7 +26,8 @@ type
     FSource: TStringList;
     FCodeGeneratingUnit: string;
     FLineMapping: TObjectList<TLineMapping>;
-    procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False);
+    procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
+      ACompileAsProgramm: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
     procedure RegisterOperation(AOpName: string; ALeftType, ARightType: TRawType; ALeftSize, ARightSize: Integer;
@@ -40,8 +41,12 @@ type
     function GetOperation(AOperation: string; ALeftType,
       ARightType: TDataType): TOperation;
     //parse functions
-    procedure ParseUnitHeader(AUnit: TPascalUnit);
+    procedure ParseUnit();
+    procedure ParseUnitHeader();
     procedure ParseUnitFooter();
+    procedure ParseUnitSectionContent();
+    procedure ParseProgram();
+    procedure ParseProgramHeader();
     procedure ParseUses(AScope: TObjectList<TCodeElement>);
     procedure ParseTypes(AScope: TObjectList<TCodeElement>);
     procedure ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
@@ -193,51 +198,14 @@ begin
   FLexer := AUnit.Lexer;
   try
     try
-      ParseUnitHeader(AUnit);
-      if CountUnitName(AUnit.Name) > 1 then
+      if not ACompileAsProgramm then
       begin
-        FUnits.Delete(FUnits.IndexOf(AUnit));
-        FCurrentUnit := LLastUnit;
-        FLexer := LLastLexer;
-        Exit();
-      end;
-      while True do
+        ParseUnit();
+      end
+      else
       begin
-        case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function', 'type']) of
-          0:
-          begin
-            ParseUses(AUnit.SubElements);
-          end;
-
-          1:
-          begin
-            ParseVars(AUnit.SubElements);
-          end;
-
-          2:
-          begin
-            ParseConsts(AUnit.SubElements);
-          end;
-
-          3, 4:
-          begin
-            ParseRoutineDeclaration(AUnit.SubElements);
-          end;
-
-          5:
-          begin
-            ParseTypes(AUnit.SubElements);
-          end
-          else
-            break;
-        end;
+        ParseProgram();
       end;
-      if FLexer.PeekToken.IsContent('begin') then
-      begin
-        FLexer.GetToken();
-        ParseRoutineContent(AUnit.InitSection);
-      end;
-      ParseUnitFooter();
     except
       on E: Exception do
       begin
@@ -865,6 +833,27 @@ begin
   FLexer.GetToken(';');
 end;
 
+procedure TCompiler.ParseProgram;
+begin
+  ParseProgramHeader();
+  if CountUnitName(FCurrentUnit.Name) > 1 then
+  begin
+    FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
+    Exit();
+  end;
+  ParseUnitSectionContent();
+  FLexer.GetToken('begin');
+  ParseRoutineContent(FCurrentUnit.InitSection);
+  ParseUnitFooter();
+end;
+
+procedure TCompiler.ParseProgramHeader;
+begin
+  FLexer.GetToken('program', ttReserved);
+  FCurrentUnit.Name := FLexer.GetToken('', ttIdentifier).Content;
+  FLexer.GetToken.MatchContent(';');
+end;
+
 function TCompiler.ParseRelation(AScope: TObjectList<TCodeElement>; ATryInverse: Boolean = False): TDataType;
 var
   LRelation: TRelation;
@@ -1158,6 +1147,23 @@ begin
   end;
 end;
 
+procedure TCompiler.ParseUnit;
+begin
+  ParseUnitHeader();
+  if CountUnitName(FCurrentUnit.Name) > 1 then
+  begin
+    FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
+    Exit();
+  end;
+  ParseUnitSectionContent();
+  if FLexer.PeekToken.IsContent('initialization') then
+  begin
+    FLexer.GetToken();
+    ParseRoutineContent(FCurrentUnit.InitSection);
+  end;
+  ParseUnitFooter();
+end;
+
 procedure TCompiler.ParseUnitFooter;
 begin
   FLexer.GetToken.MatchContent('end');
@@ -1167,8 +1173,43 @@ end;
 procedure TCompiler.ParseUnitHeader;
 begin
   FLexer.GetToken.MatchContent('unit');
-  AUnit.Name := FLexer.GetToken('', ttIdentifier).Content;
+  FCurrentUnit.Name := FLexer.GetToken('', ttIdentifier).Content;
   FLexer.GetToken.MatchContent(';');
+end;
+
+procedure TCompiler.ParseUnitSectionContent;
+begin
+  while True do
+  begin
+    case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function', 'type']) of
+      0:
+      begin
+        ParseUses(FCurrentUnit.SubElements);
+      end;
+
+      1:
+      begin
+        ParseVars(FCurrentUnit.SubElements);
+      end;
+
+      2:
+      begin
+        ParseConsts(FCurrentUnit.SubElements);
+      end;
+
+      3, 4:
+      begin
+        ParseRoutineDeclaration(FCurrentUnit.SubElements);
+      end;
+
+      5:
+      begin
+        ParseTypes(FCurrentUnit.SubElements);
+      end
+      else
+        break;
+    end;
+  end;
 end;
 
 procedure TCompiler.ParseUses;
