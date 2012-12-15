@@ -161,7 +161,7 @@ begin
       raise EAbort.Create('File not found:' + QuotedStr(AFile));
     end;
     LUnit.Lexer.LoadFromFile(GetPathForFile(AFile));
-    CompileUnit(LUnit);
+    CompileUnit(LUnit, false, SameText(ExtractFileExt(AFile), '.d16r'));
   except
     on E: Exception do
     begin
