@@ -99,6 +99,7 @@ end;
 
 procedure TLexer.InitReserved;
 begin
+  FReserved.Add('program');
   FReserved.Add('unit');
   FReserved.Add('end');
   FReserved.Add('begin');
