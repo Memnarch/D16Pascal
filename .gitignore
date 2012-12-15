@@ -8,3 +8,5 @@
 *.rar
 *.bak
 thumbs.db
+debug/
+DemoSource/
