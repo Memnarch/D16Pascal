@@ -81,6 +81,7 @@ end;
 
 procedure TProcDeclaration.GetDCPUSource;
 begin
+  AWriter.AddMapping(Self);
   AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin

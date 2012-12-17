@@ -59,6 +59,7 @@ procedure TCaseStatement.GetDCPUSource;
 var
   i: Integer;
 begin
+  AWriter.AddMapping(Self);
   Relation.Items[0].GetDCPUSource(Self);
   OptimizeDCPUCode(Self.FSource, Self.FSource);
   AWriter.WriteList(Self.FSource);

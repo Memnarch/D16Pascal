@@ -44,6 +44,7 @@ var
   LID, LEnd, LElse: string;
   LElement: TCodeElement;
 begin
+  AWriter.AddMapping(Self);
   LID := GetUniqueID();
   LEnd := 'End' + LID;
   LElse := 'Else' +  LID;

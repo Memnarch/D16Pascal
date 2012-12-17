@@ -63,6 +63,7 @@ var
   LEnd: string;
   LWhile: string;
 begin
+  AWriter.AddMapping(Self);
   LID := GetUniqueID();
   LWhile := 'While' + LID;
   LEnd := 'End' + LID;
@@ -85,6 +86,7 @@ var
   LID: string;
   LRepeat: string;
 begin
+  AWriter.AddMapping(Self);
   LID := GetUniqueID();
   LRepeat := 'Repeat' + LID;
   AWriter.Write(':' + LRepeat);
@@ -118,6 +120,7 @@ var
   LEnd: string;
   LVar: string;
 begin
+  AWriter.AddMapping(Self);
   LID := GetUniqueID('');
   LVar := TAssignment(Assignment.Items[0]).TargetVar.GetAccessIdentifier();
   if (TAssignment(Assignment.Items[0]).TargetVar.ParamIndex > 3) or (TAssignment(Assignment.Items[0]).TargetVar.ParamIndex < 1) then
