@@ -20,11 +20,15 @@ type
     procedure ParseOperator();
     procedure ParseNumber();
     procedure ParseCharLiteral();
+    procedure ParseSingleComment();
+    procedure ParseMultiComment();
     procedure NextChar();
     procedure NewToken(AContent: string; AType: TTokenType);
     procedure InitReserved();
     procedure InsertLineBreak();
     function GetChar(): Char;
+    function PeekChar(AOffset: Integer): Char;
+    function CanPeek(AOffset: Integer): Boolean;
     function IsNextChar(AChar: Char): Boolean;
     function GetEOF: Boolean;
     function IsParseEOF(): Boolean;
@@ -33,6 +37,7 @@ type
     destructor Destroy(); override;
     procedure LoadFromFile(AFile: string);
     procedure LoadFromString(AString: string);
+    procedure RemoveComments();
     function GetToken(AContent: string = ''; AType: TTokenType = ttNone): TToken;
     function PeekToken(): TToken;
     function PreviousToken(): TToken;
@@ -52,6 +57,11 @@ uses
 function TLexer.AHeadToken: TToken;
 begin
   Result := FTokens.Items[FTokenIndex+1];
+end;
+
+function TLexer.CanPeek(AOffset: Integer): Boolean;
+begin
+  Result := (FPos + AOffset) < Length(FSource);
 end;
 
 constructor TLexer.Create;
@@ -149,6 +159,7 @@ begin
   FTokens.Clear;
   FTokenIndex := 0;
   ParseSource();
+  RemoveComments();
 end;
 
 procedure TLexer.NewToken(AContent: string; AType: TTokenType);
@@ -233,6 +244,24 @@ begin
   end;
 end;
 
+procedure TLexer.ParseMultiComment;
+var
+  LContent: string;
+begin
+  LContent := '';
+  while not IsParseEOF do
+  begin
+    LContent := LContent + GetChar();
+    if GetChar() = '}' then
+    begin
+      NextChar();
+      Break;
+    end;
+    NextChar();
+  end;
+  NewToken(LContent, ttComment);
+end;
+
 procedure TLexer.ParseNumber;
 var
   LHasDot, LIsHexa: Boolean;
@@ -307,6 +336,27 @@ begin
   end;
 end;
 
+procedure TLexer.ParseSingleComment;
+var
+  LContent: string;
+begin
+  LContent := '';
+  while not IsParseEOF do
+  begin
+    if (GetChar() = #10) or ((GetChar() = #13) and CanPeek(1) and (PeekChar(1) = #10))  then
+    begin
+      Break;
+    end
+    else
+    begin
+      LContent := GetChar();
+    end;
+    NextChar();
+  end;
+  NewToken(LContent, ttComment);
+  FTokens.Items[FTokens.Count - 1].FollowedByNewLine := True;
+end;
+
 procedure TLexer.ParseSource;
 var
   LChar: Char;
@@ -338,9 +388,21 @@ begin
         ParseCharLiteral();
       end;
 
-      '+', '-', '*', '/', '=', '<', '>', '@', '^':
+      '+', '-', '*', '=', '<', '>', '@', '^':
       begin
         ParseOperator();
+      end;
+
+      '/':
+      begin
+        if (GetChar() = '/') and CanPeek(1) and (PeekChar(1) = '/') then
+        begin
+          ParseSingleComment();
+        end
+        else
+        begin
+          ParseOperator();
+        end;
       end;
 
       '(', ')', '[', ']', ',', '.', ';':
@@ -377,6 +439,11 @@ begin
         end;
       end;
 
+      '{':
+      begin
+        ParseMultiComment();
+      end
+
       else
         if CharInSet(GetChar(), [#0..#32, #127]) then
         begin
@@ -392,6 +459,11 @@ begin
     end;
   end;
   NewToken('EOF', ttEOF);
+end;
+
+function TLexer.PeekChar(AOffset: Integer): Char;
+begin
+  Result := FSource[FPos + AOffset];
 end;
 
 function TLexer.PeekToken: TToken;
@@ -412,6 +484,19 @@ begin
   else
   begin
     Result := FTokens.Items[0];
+  end;
+end;
+
+procedure TLexer.RemoveComments;
+var
+  i: Integer;
+begin
+  for i := FTokens.Count - 1 downto 0 do
+  begin
+    if FTokens.Items[i].IsType(ttComment) then
+    begin
+      FTokens.Delete(i);
+    end;
   end;
 end;
 

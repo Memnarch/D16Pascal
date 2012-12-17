@@ -7,7 +7,7 @@ uses
 
 type
   TTokenType = (ttNone, ttIdentifier, ttNumber, ttTermOp, ttFacOp, ttRelOp, ttCharLiteral,
-    ttDelimiter, ttAssignOp, ttEOF, ttReserved);
+    ttDelimiter, ttAssignOp, ttEOF, ttReserved, ttComment);
   TTokenTypes = set of TTokenType;
 
   TToken = class
