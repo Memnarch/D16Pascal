@@ -88,11 +88,11 @@ type
     destructor Destroy(); override;
     function GetDCPUSource(): string;
     procedure CompileFile(AFile: string);
-    procedure CompilerSource(ASource: string);
+    procedure CompilerSource(ASource: string; AAsProgram: Boolean);
     procedure ClearUnitCache(AName: string);
     procedure Initialize();
     procedure Reset();
-    function PeekCompile(ASource, AUnitName: string; var AUnit: TPascalUnit): Boolean;
+    function PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
     function GetUnitByName(AName: string): TPascalUnit;
     function GetMappingByASMLine(ALine: Integer): TLineMapping;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
@@ -170,14 +170,14 @@ begin
   end;
 end;
 
-procedure TCompiler.CompilerSource(ASource: string);
+procedure TCompiler.CompilerSource(ASource: string; AAsProgram: Boolean);
 var
   LUnit: TPascalUnit;
 begin
   LUnit := TPascalUnit.Create('');
   try
     LUnit.Lexer.LoadFromString(ASource);
-    CompileUnit(LUnit);
+    CompileUnit(LUnit, False, AAsProgram);
   except
     on E: Exception do
     begin
@@ -534,6 +534,7 @@ var
 begin
   LOverride := nil;
   LAssignment := TAssignment.Create('');
+  LAssignment.Line := FLexer.PeekToken.FoundInLine;
   if FLexer.PeekToken.IsType(ttIdentifier) and FLexer.AHeadToken.IsContent('(') then
   begin
     LOverride := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
@@ -614,9 +615,10 @@ procedure TCompiler.ParseCaseStatement(AScope: TObjectList<TCodeElement>);
 var
   LStatement: TCaseStatement;
 begin
-  FLexer.GetToken('case');
   LStatement := TCaseStatement.Create();
   AScope.Add(LStatement);
+  LStatement.Line := FLexer.PeekToken.FoundInLine;
+  FLexer.GetToken('case');
   if ParseRelation(LStatement.Relation).RawType <> rtUInteger then
   begin
     Fatal('Relation of Case requires returntype of unsigned integer');
@@ -644,6 +646,7 @@ var
 begin
   LCondition := TCondition.Create();
   AScope.Add(LCondition);
+  LCondition.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('if');
   ParseRelation(LCondition.Relation);
   FLexer.GetToken('then');
@@ -816,6 +819,7 @@ var
 begin
   LFor := TForLoop.Create();
   AScope.Add(LFor);
+  LFor.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('for');
   if ParseAssignment(LFor.Assignment, False).RawType <> rtUInteger then
   begin
@@ -889,6 +893,7 @@ var
 begin
   LLoop := TRepeatLoop.Create();
   AScope.Add(LLoop);
+  LLoop.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('repeat');
   ParseRoutineContent(LLoop.SubElements);
   FLexer.GetToken('until');
@@ -905,6 +910,7 @@ begin
   Result := FNilDataType;
   LCall := TProcCall.Create();
   AScope.Add(LCall);
+  LCall.Line := FLexer.PeekToken.FoundInLine;
   LCall.ProcDeclaration := TProcDeclaration(ExpectElement(FLexer.GetToken().Content, TProcDeclaration));
   if LCall.ProcDeclaration.IsFunction then
   begin
@@ -1328,6 +1334,7 @@ var
 begin
   LLoop := TWhileLoop.Create();
   AScope.Add(LLoop);
+  LLoop.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('while');
   ParseRelation(LLoop.Relation);
   FLexer.GetToken('do');
@@ -1338,13 +1345,13 @@ begin
 end;
 
 
-function TCompiler.PeekCompile(ASource, AUnitName: string; var AUnit: TPascalUnit): Boolean;
+function TCompiler.PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
 begin
   try
     FFatals := 0;
     FErrors := 0;
     ClearUnitCache(AUnitName);
-    CompilerSource(ASource);
+    CompilerSource(ASource, AAsProgram);
     AUnit := GetUnitByName(AUnitName);
     Result := Assigned(AUnit) and (FFatals = 0) and (FErrors = 0);
   except
