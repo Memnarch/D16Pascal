@@ -18,7 +18,7 @@ type
     FSource: TStringList;
     procedure Write(ALine: string); virtual;
     procedure WriteList(AList: TStrings); virtual;
-    procedure AddMapping(AElement: TObject; AOffset: Integer = 0); virtual;
+    procedure AddMapping(AElement: TObject; AOffset: Integer = 0; AHideName: Boolean = False); virtual;
   public
     constructor Create(AName: string);
     destructor Destroy(); override;

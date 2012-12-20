@@ -13,6 +13,8 @@ type
     FResultType: TDataType;
     FParameters: TObjectList<TCodeElement>;
     FLocals: TObjectList<TCodeElement>;
+    FStartLine: Integer;
+    FEndLine: Integer;
     function GetIsFunction: Boolean;
   public
     constructor Create(const AName: string);
@@ -25,6 +27,8 @@ type
     property ResultType: TDataType read FResultType write FResultType;
     property Parameters: TObjectList<TCodeElement> read FParameters;
     property Locals: TObjectList<TCodeElement> read FLocals;
+    property StartLine: Integer read FStartLine write FStartLine;
+    property EndLine: Integer read FEndLine write FEndLine;
   end;
 
 implementation
@@ -81,7 +85,8 @@ end;
 
 procedure TProcDeclaration.GetDCPUSource;
 begin
-  AWriter.AddMapping(Self);
+//  AWriter.AddMapping(Self);
+  AWriter.AddMapping(Self, StartLine - Line, True);//mark the entryline of prolog
   AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
@@ -93,6 +98,7 @@ begin
     AWriter.Write('set j, sp');
   end;
   inherited GetDCPUSource(AWriter);
+  AWriter.AddMapping(Self, EndLine - Line, True);//mark the entryline of epilog
   if IsFunction and (FLocals.Count > 0) then
   begin
     AWriter.Write('set a, [' +

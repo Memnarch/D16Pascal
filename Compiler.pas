@@ -82,7 +82,7 @@ type
     procedure RegisterSysUnit();
     procedure Write(ALine: string);
     procedure WriteList(AList: TStrings);
-    procedure AddMapping(AElement: TObject; AOffset: Integer = 0);
+    procedure AddMapping(AElement: TObject; AOffset: Integer = 0; AHideName: Boolean = False);
   public
     constructor Create();
     destructor Destroy(); override;
@@ -130,7 +130,10 @@ begin
   try
     LMapping.UnitLine := TCodeElement(AElement).Line + AOffset;
     LMapping.ASMLine := FSource.Count;
-    LMapping.ElementName := TCodeElement(AElement).Name;
+    if not AHideName then
+    begin
+      LMapping.ElementName := TCodeElement(AElement).Name;
+    end;
     LMapping.D16UnitName := FCodeGeneratingUnit;
   finally
     FLineMapping.Add(LMapping);
@@ -1035,6 +1038,7 @@ begin
   begin
     ParseRoutineLocals(LProc);
   end;
+  LProc.StartLine := FLexer.PeekToken.FoundInLine;
   if FLexer.PeekToken.IsContent('asm') then
   begin
     ParseASMBlock(LProc.SubElements);
@@ -1047,6 +1051,7 @@ begin
     end;
     FLexer.GetToken('begin');
     ParseRoutineContent(LProc.SubElements);
+    LProc.EndLine := FLexer.PeekToken.FoundInLine;
     FLexer.GetToken('end');
     FLexer.GetToken(';');
   end;
