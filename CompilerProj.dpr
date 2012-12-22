@@ -3,7 +3,7 @@ program CompilerProj;
 uses
   Forms,
   Main in 'Main.pas' {Form2},
-  Compiler in 'Compiler.pas',
+  D16Parser in 'D16Parser.pas',
   Lexer in 'Lexer\Lexer.pas',
   Token in 'Lexer\Token.pas',
   DataType in 'DataType.pas',
@@ -32,7 +32,8 @@ uses
   CompilerDefines in 'CompilerDefines.pas',
   WriterIntf in 'WriterIntf.pas',
   UncountedInterfacedObject in 'UncountedInterfacedObject.pas',
-  LineMapping in 'LineMapping.pas';
+  LineMapping in 'LineMapping.pas',
+  Compiler in 'Compiler.pas';
 
 {$R *.res}
 

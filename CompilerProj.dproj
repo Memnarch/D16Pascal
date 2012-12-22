@@ -11,7 +11,7 @@
 			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
 			<Basis>True</Basis>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Basis' or '$(Base)'!=''">
+		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
@@ -54,7 +54,7 @@
 			<DCCReference Include="Main.pas">
 				<Form>Form2</Form>
 			</DCCReference>
-			<DCCReference Include="Compiler.pas"/>
+			<DCCReference Include="D16Parser.pas"/>
 			<DCCReference Include="Lexer\Lexer.pas"/>
 			<DCCReference Include="Lexer\Token.pas"/>
 			<DCCReference Include="DataType.pas"/>
@@ -84,11 +84,12 @@
 			<DCCReference Include="WriterIntf.pas"/>
 			<DCCReference Include="UncountedInterfacedObject.pas"/>
 			<DCCReference Include="LineMapping.pas"/>
+			<DCCReference Include="Compiler.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
-			<BuildConfiguration Include="Basis">
+			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
 			<BuildConfiguration Include="Debug">
