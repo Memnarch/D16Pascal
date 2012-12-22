@@ -92,7 +92,7 @@ type
     procedure ParseSource(ASource: string; AAsProgram: Boolean);
     procedure ClearUnitCache(AName: string);
     procedure Reset();
-    function PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
+    procedure ResetResults();
     function GetUnitByName(AName: string): TPascalUnit;
     function GetMappingByASMLine(ALine: Integer): TLineMapping;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
@@ -1349,21 +1349,6 @@ begin
   FLexer.GetToken(';');
 end;
 
-
-function TD16Parser.PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
-begin
-  try
-    FFatals := 0;
-    FErrors := 0;
-    ClearUnitCache(AUnitName);
-    ParseSource(ASource, AAsProgram);
-    AUnit := GetUnitByName(AUnitName);
-    Result := Assigned(AUnit) and (FFatals = 0) and (FErrors = 0);
-  except
-    Result := False;
-  end;
-end;
-
 procedure TD16Parser.RegisterBasicTypes;
 begin
   RegisterType('word');
@@ -1435,6 +1420,14 @@ begin
   FSource.Clear();
   FLineMapping.Clear;
   Initialize();
+end;
+
+procedure TD16Parser.ResetResults;
+begin
+  FFatals := 0;
+  FErrors := 0;
+  FWarning := 0;
+  FHints := 0;
 end;
 
 procedure TD16Parser.Write(ALine: string);

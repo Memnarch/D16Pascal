@@ -134,16 +134,14 @@ end;
 
 function TCompiler.PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
 begin
-  FParser.PeekCompile(ASource, UnitName, AAsProgram, AUnit);
-//  try
-//    FParser.PeekMode := True;
-//    FParser.ClearUnitCache(AUnitName);
-//    FParser.ParseSource(ASource, AAsProgram);
-//    AUnit := FParser.GetUnitByName(AUnitName);
-//    Result := Assigned(AUnit) and (FParser.Fatals = 0) and (FParser.Errors = 0);
-//  except
-//    Result := False;
-//  end;
+  try
+    FParser.ClearUnitCache(AUnitName);
+    FParser.ParseSource(ASource, AAsProgram);
+    AUnit := FParser.GetUnitByName(AUnitName);
+    Result := Assigned(AUnit) and (FParser.Fatals = 0) and (FParser.Errors = 0);
+  except
+    Result := False;
+  end;
 end;
 
 
