@@ -3,13 +3,15 @@ unit Compiler;
 interface
 
 uses
-  Classes, Types, Generics.Collections, SysUtils, D16Parser, LineMapping, CompilerDefines, PascalUnit, UnitCache;
+  Classes, Types, Generics.Collections, SysUtils, D16Parser, LineMapping, CompilerDefines, PascalUnit, UnitCache,
+  D16Writer;
 
 type
   TCompiler = class(TObject)
   private
     FParser: TD16Parser;
     FUnits: TUnitCache;
+    FWriter: TD16Writer;
     function GetErrors: Integer;
     function GetFatals: Integer;
     function GetHints: Integer;
@@ -62,6 +64,7 @@ constructor TCompiler.Create;
 begin
   inherited;
   FUnits := TUnitCache.Create();
+  FWriter := TD16Writer.Create();
   FParser := TD16Parser.Create(FUnits);
 end;
 
@@ -69,12 +72,20 @@ destructor TCompiler.Destroy;
 begin
   FParser.Free;
   FUnits.Free;
+  FWriter.Free();
   inherited;
 end;
 
 function TCompiler.GetDCPUSource: string;
+var
+  LUnit: TPascalUnit;
 begin
-  Result := FParser.GetDCPUSource();
+  for LUnit in FUnits do
+  begin
+    FWriter.CurrentUnit := LUnit.Name;
+    LUnit.GetDCPUSource(FWriter);
+  end;
+  Result := FWriter.Source.Text;
 end;
 
 function TCompiler.GetErrors: Integer;
@@ -94,12 +105,12 @@ end;
 
 function TCompiler.GetLineMapping: TObjectList<TLineMapping>;
 begin
-  Result := FParser.LineMapping;
+  Result := FWriter.LineMapping;
 end;
 
 function TCompiler.GetMappingByASMLine(ALine: Integer): TLineMapping;
 begin
-  Result := FParser.GetMappingByASMLine(ALine);
+  Result := FWriter.GetMappingByASMLine(ALine);
 end;
 
 function TCompiler.GetOnMessage: TOnMessage;

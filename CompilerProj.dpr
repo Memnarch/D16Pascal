@@ -34,7 +34,8 @@ uses
   UncountedInterfacedObject in 'UncountedInterfacedObject.pas',
   LineMapping in 'LineMapping.pas',
   Compiler in 'Compiler.pas',
-  UnitCache in 'UnitCache.pas';
+  UnitCache in 'UnitCache.pas',
+  D16Writer in 'D16Writer.pas';
 
 {$R *.res}
 
