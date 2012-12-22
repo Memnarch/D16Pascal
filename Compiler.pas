@@ -3,12 +3,13 @@ unit Compiler;
 interface
 
 uses
-  Classes, Types, Generics.Collections, SysUtils, D16Parser, LineMapping, CompilerDefines, PascalUnit;
+  Classes, Types, Generics.Collections, SysUtils, D16Parser, LineMapping, CompilerDefines, PascalUnit, UnitCache;
 
 type
   TCompiler = class(TObject)
   private
     FParser: TD16Parser;
+    FUnits: TUnitCache;
     function GetErrors: Integer;
     function GetFatals: Integer;
     function GetHints: Integer;
@@ -16,7 +17,6 @@ type
     function GetOnMessage: TOnMessage;
     function GetPeekMode: Boolean;
     function GetSearchPath: TStringlist;
-    function GetUnits: TObjectList<TPascalUnit>;
     function GetWarning: Integer;
     procedure SetOnMessage(const Value: TOnMessage);
     procedure SetPeekMode(const Value: Boolean);
@@ -25,12 +25,10 @@ type
     destructor Destroy(); override;
     procedure CompileFile(AFile: string);
     procedure CompilerSource(ASource: string; AAsProgram: Boolean);
-//    procedure Initialize();
     procedure Reset();
     function PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
     function GetDCPUSource(): string;
     function GetMappingByASMLine(ALine: Integer): TLineMapping;
-    function GetUnitByName(AName: string): TPascalUnit;
     property SearchPath: TStringlist read GetSearchPath;
     property OnMessage: TOnMessage read GetOnMessage write SetOnMessage;
     property Errors: Integer read GetErrors;
@@ -38,7 +36,7 @@ type
     property Fatals: Integer read GetFatals;
     property Hints: Integer read GetHints;
     property PeekMode: Boolean read GetPeekMode write SetPeekMode;
-    property Units: TObjectList<TPascalUnit> read GetUnits;
+    property Units: TUnitCache read FUnits;
     property LineMapping: TObjectList<TLineMapping> read GetLineMapping;
   end;
 
@@ -63,12 +61,14 @@ end;
 constructor TCompiler.Create;
 begin
   inherited;
-  FParser := TD16Parser.Create();
+  FUnits := TUnitCache.Create();
+  FParser := TD16Parser.Create(FUnits);
 end;
 
 destructor TCompiler.Destroy;
 begin
   FParser.Free;
+  FUnits.Free;
   inherited;
 end;
 
@@ -117,16 +117,6 @@ begin
   Result := FParser.SearchPath;
 end;
 
-function TCompiler.GetUnitByName(AName: string): TPascalUnit;
-begin
-  Result := FParser.GetUnitByName(AName);
-end;
-
-function TCompiler.GetUnits: TObjectList<TPascalUnit>;
-begin
-  Result := FParser.Units;
-end;
-
 function TCompiler.GetWarning: Integer;
 begin
   Result := FParser.Warnings;
@@ -135,9 +125,9 @@ end;
 function TCompiler.PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
 begin
   try
-    FParser.ClearUnitCache(AUnitName);
+    FParser.Units.ClearUnitCache(AUnitName);
     FParser.ParseSource(ASource, AAsProgram);
-    AUnit := FParser.GetUnitByName(AUnitName);
+    AUnit := FParser.Units.GetUnitByName(AUnitName);
     Result := Assigned(AUnit) and (FParser.Fatals = 0) and (FParser.Errors = 0);
   except
     Result := False;

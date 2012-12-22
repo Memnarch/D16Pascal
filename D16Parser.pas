@@ -5,13 +5,13 @@ interface
 uses
   Classes, Types, Generics.Collections, SysUtils, UncountedInterfacedObject, Lexer, Token, CodeElement, DataType,
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations,
-  Factor, CompilerDefines, WriterIntf, LineMapping;
+  Factor, CompilerDefines, WriterIntf, LineMapping, UnitCache;
 
 type
   TD16Parser = class(TUncountedInterfacedObject, IOperations, IWriter)
   private
     FLexer: TLexer;
-    FUnits: TObjectList<TPascalUnit>;
+    FUnits: TUnitCache;
     FOperations: TObjectList<TOperation>;
     FCurrentUnit: TPascalUnit;
     FCurrentProc: TProcDeclaration;
@@ -26,8 +26,8 @@ type
     FSource: TStringList;
     FCodeGeneratingUnit: string;
     FLineMapping: TObjectList<TLineMapping>;
-    procedure CompileUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
-      ACompileAsProgramm: Boolean = False);
+    procedure ParsePascalUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
+      AParseAsProgramm: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
     procedure RegisterOperation(AOpName: string; ALeftType, ARightType: TRawType; ALeftSize, ARightSize: Integer;
@@ -77,7 +77,6 @@ type
     procedure Fatal(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
     function GetPathForFile(AFile: string): string;
-    function CountUnitName(AName: string): Integer;
     function GetCurrentLine(): Integer;
     procedure RegisterSysUnit();
     procedure Write(ALine: string);
@@ -85,15 +84,13 @@ type
     procedure AddMapping(AElement: TObject; AOffset: Integer = 0; AHideName: Boolean = False);
     procedure Initialize();
   public
-    constructor Create();
+    constructor Create(AUnitCache: TUnitCache);
     destructor Destroy(); override;
     function GetDCPUSource(): string;
     procedure ParseFile(AFile: string);
     procedure ParseSource(ASource: string; AAsProgram: Boolean);
-    procedure ClearUnitCache(AName: string);
     procedure Reset();
     procedure ResetResults();
-    function GetUnitByName(AName: string): TPascalUnit;
     function GetMappingByASMLine(ALine: Integer): TLineMapping;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
     property OnMessage: TOnMessage read FOnMessage write FOnMessage;
@@ -102,7 +99,7 @@ type
     property Fatals: Integer read FFatals;
     property Hints: Integer read FHints;
     property PeekMode: Boolean read FPeekMode write FPeekMode;
-    property Units: TObjectList<TPascalUnit> read FUnits;
+    property Units: TUnitCache read FUnits;
     property LineMapping: TObjectList<TLineMapping> read FLineMapping;
   end;
 
@@ -140,17 +137,6 @@ begin
   end;
 end;
 
-procedure TD16Parser.ClearUnitCache(AName: string);
-var
-  LUnit: TPascalUnit;
-begin
-  LUnit := GetUnitByName(AName);
-  while Assigned(LUnit) do
-  begin
-    FUnits.Delete(FUnits.IndexOf(LUnit));
-    LUnit := GetUnitByName(AName);
-  end;
-end;
 
 procedure TD16Parser.ParseFile(AFile: string);
 var
@@ -164,7 +150,7 @@ begin
       raise EAbort.Create('File not found:' + QuotedStr(AFile));
     end;
     LUnit.Lexer.LoadFromFile(GetPathForFile(AFile));
-    CompileUnit(LUnit, false, SameText(ExtractFileExt(AFile), '.d16r'));
+    ParsePascalUnit(LUnit, false, SameText(ExtractFileExt(AFile), '.d16r'));
   except
     on E: Exception do
     begin
@@ -180,7 +166,7 @@ begin
   LUnit := TPascalUnit.Create('');
   try
     LUnit.Lexer.LoadFromString(ASource);
-    CompileUnit(LUnit, False, AAsProgram);
+    ParsePascalUnit(LUnit, False, AAsProgram);
   except
     on E: Exception do
     begin
@@ -189,7 +175,7 @@ begin
   end;
 end;
 
-procedure TD16Parser.CompileUnit;
+procedure TD16Parser.ParsePascalUnit;
 var
   LLastUnit: TPascalUnit;
   LLastLexer: TLexer;
@@ -201,7 +187,7 @@ begin
   FLexer := AUnit.Lexer;
   try
     try
-      if not ACompileAsProgramm then
+      if not AParseAsProgramm then
       begin
         ParseUnit();
       end
@@ -225,24 +211,10 @@ begin
   end;
 end;
 
-function TD16Parser.CountUnitName(AName: string): Integer;
-var
-  LUnit: TPascalUnit;
-begin
-  Result := 0;
-  for LUnit in FUnits do
-  begin
-    if SameText(AName, LUnit.Name) then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
 constructor TD16Parser.Create;
 begin
-  inherited;
-  FUnits := TObjectList<TPascalUnit>.Create();
+  inherited Create();
+  FUnits := AUnitCache;
   FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
   FPeekMode := False;
@@ -254,7 +226,6 @@ end;
 
 destructor TD16Parser.Destroy;
 begin
-  FUnits.Free;
   FSearchPath.Free;
   FOperations.Free;
   FSource.Free;
@@ -401,20 +372,6 @@ begin
     begin
       Result := LPath + '\' + AFile;
       Break;
-    end;
-  end;
-end;
-
-function TD16Parser.GetUnitByName(AName: string): TPascalUnit;
-var
-  LUnit: TPascalUnit;
-begin
-  Result := nil;
-  for LUnit in FUnits do
-  begin
-    if SameText(Lunit.Name, AName) then
-    begin
-      Result := LUnit;
     end;
   end;
 end;
@@ -843,7 +800,7 @@ end;
 procedure TD16Parser.ParseProgram;
 begin
   ParseProgramHeader();
-  if CountUnitName(FCurrentUnit.Name) > 1 then
+  if Units.CountUnitName(FCurrentUnit.Name) > 1 then
   begin
     FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
     Exit();
@@ -1161,7 +1118,7 @@ end;
 procedure TD16Parser.ParseUnit;
 begin
   ParseUnitHeader();
-  if CountUnitName(FCurrentUnit.Name) > 1 then
+  if Units.CountUnitName(FCurrentUnit.Name) > 1 then
   begin
     FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
     Exit();

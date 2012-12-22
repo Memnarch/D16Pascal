@@ -33,7 +33,8 @@ uses
   WriterIntf in 'WriterIntf.pas',
   UncountedInterfacedObject in 'UncountedInterfacedObject.pas',
   LineMapping in 'LineMapping.pas',
-  Compiler in 'Compiler.pas';
+  Compiler in 'Compiler.pas',
+  UnitCache in 'UnitCache.pas';
 
 {$R *.res}
 
