@@ -5,10 +5,10 @@ interface
 uses
   Classes, Types, Generics.Collections, SysUtils, UncountedInterfacedObject, Lexer, Token, CodeElement, DataType,
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations,
-  Factor, CompilerDefines, WriterIntf, LineMapping, UnitCache;
+  Factor, CompilerDefines, LineMapping, UnitCache, WriterIntf;
 
 type
-  TD16Parser = class(TUncountedInterfacedObject, IOperations, IWriter)
+  TD16Parser = class(TUncountedInterfacedObject, IOperations)
   private
     FLexer: TLexer;
     FUnits: TUnitCache;
@@ -23,9 +23,7 @@ type
     FHints: Integer;
     FPeekMode: Boolean;
     FNilDataType: TDataType;
-    FSource: TStringList;
     FCodeGeneratingUnit: string;
-    FLineMapping: TObjectList<TLineMapping>;
     procedure ParsePascalUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
       AParseAsProgramm: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
@@ -79,19 +77,14 @@ type
     function GetPathForFile(AFile: string): string;
     function GetCurrentLine(): Integer;
     procedure RegisterSysUnit();
-    procedure Write(ALine: string);
-    procedure WriteList(AList: TStrings);
-    procedure AddMapping(AElement: TObject; AOffset: Integer = 0; AHideName: Boolean = False);
     procedure Initialize();
   public
     constructor Create(AUnitCache: TUnitCache);
     destructor Destroy(); override;
-    function GetDCPUSource(): string;
     procedure ParseFile(AFile: string);
     procedure ParseSource(ASource: string; AAsProgram: Boolean);
     procedure Reset();
     procedure ResetResults();
-    function GetMappingByASMLine(ALine: Integer): TLineMapping;
     property SearchPath: TStringlist read FSearchPath write FSearchPath;
     property OnMessage: TOnMessage read FOnMessage write FOnMessage;
     property Errors: Integer read FErrors;
@@ -100,7 +93,6 @@ type
     property Hints: Integer read FHints;
     property PeekMode: Boolean read FPeekMode write FPeekMode;
     property Units: TUnitCache read FUnits;
-    property LineMapping: TObjectList<TLineMapping> read FLineMapping;
   end;
 
 const
@@ -118,25 +110,6 @@ uses
   StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
 
 { TCompiler }
-
-procedure TD16Parser.AddMapping;
-var
-  LMapping: TLineMapping;
-begin
-  LMapping := TLineMapping.Create();
-  try
-    LMapping.UnitLine := TCodeElement(AElement).Line + AOffset;
-    LMapping.ASMLine := FSource.Count;
-    if not AHideName then
-    begin
-      LMapping.ElementName := TCodeElement(AElement).Name;
-    end;
-    LMapping.D16UnitName := FCodeGeneratingUnit;
-  finally
-    FLineMapping.Add(LMapping);
-  end;
-end;
-
 
 procedure TD16Parser.ParseFile(AFile: string);
 var
@@ -219,8 +192,6 @@ begin
   FSearchPath := TStringList.Create();
   FPeekMode := False;
   FNilDataType := TDataType.Create('NilType', 0, rtNilType);
-  FSource := TStringList.Create();
-  FLineMapping := TObjectList<TLineMapping>.Create();
   Initialize();
 end;
 
@@ -228,8 +199,6 @@ destructor TD16Parser.Destroy;
 begin
   FSearchPath.Free;
   FOperations.Free;
-  FSource.Free;
-  FLineMapping.Free;
   inherited;
 end;
 
@@ -282,18 +251,6 @@ begin
   end;
 end;
 
-function TD16Parser.GetDCPUSource: string;
-var
-  LUnit: TPascalUnit;
-begin
-  for LUnit in FUnits do
-  begin
-    FCodeGeneratingUnit := LUnit.Name;
-    LUnit.GetDCPUSource(Self);
-  end;
-  Result := Trim(Self.FSource.Text);
-end;
-
 function TD16Parser.GetElement(AName: string;
   AType: TCodeElementClass): TCodeElement;
 var
@@ -315,21 +272,6 @@ begin
     if Assigned(LElement) then
     begin
       Result := LElement;
-      Break;
-    end;
-  end;
-end;
-
-function TD16Parser.GetMappingByASMLine(ALine: Integer): TLineMapping;
-var
-  LMapping: TLineMapping;
-begin
-  Result := nil;
-  for LMapping in FLineMapping do
-  begin
-    if LMapping.ASMLine = ALine then
-    begin
-      Result := LMapping;
       Break;
     end;
   end;
@@ -1373,9 +1315,6 @@ end;
 
 procedure TD16Parser.Reset;
 begin
-  FUnits.Clear();
-  FSource.Clear();
-  FLineMapping.Clear;
   Initialize();
 end;
 
@@ -1385,16 +1324,6 @@ begin
   FErrors := 0;
   FWarning := 0;
   FHints := 0;
-end;
-
-procedure TD16Parser.Write(ALine: string);
-begin
-  FSource.Add(ALine);
-end;
-
-procedure TD16Parser.WriteList(AList: TStrings);
-begin
-  FSource.AddStrings(AList);
 end;
 
 end.
