@@ -307,7 +307,7 @@ begin
       for k := i+1 to ALines.Count-1 do
       begin
         SplitLine(ALines.Strings[k], LOpB, LTargetB, LSourceB);
-        if  SameText(LSourceA, LTargetB) then
+        if  SameText(LSourceA, LTargetB) or SameText(LSourceB, LTargetA) then
         begin
           Break;
         end;
