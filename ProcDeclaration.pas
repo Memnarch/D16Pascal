@@ -86,7 +86,7 @@ end;
 procedure TProcDeclaration.GetDCPUSource;
 begin
 //  AWriter.AddMapping(Self);
-  AWriter.AddMapping(Self, StartLine - Line, True);//mark the entryline of prolog
+  AWriter.AddMapping(Self, StartLine - Line, False);//mark the entryline of prolog
   AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
