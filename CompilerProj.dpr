@@ -35,7 +35,9 @@ uses
   LineMapping in 'LineMapping.pas',
   Compiler in 'Compiler.pas',
   UnitCache in 'UnitCache.pas',
-  D16Writer in 'D16Writer.pas';
+  D16Writer in 'D16Writer.pas',
+  VarMapping in 'VarMapping.pas',
+  RoutineMapping in 'RoutineMapping.pas';
 
 {$R *.res}
 
