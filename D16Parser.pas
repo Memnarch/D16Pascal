@@ -23,7 +23,6 @@ type
     FHints: Integer;
     FPeekMode: Boolean;
     FNilDataType: TDataType;
-    FCodeGeneratingUnit: string;
     procedure ParsePascalUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
       AParseAsProgramm: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
@@ -1151,18 +1150,21 @@ end;
 procedure TD16Parser.ParseVarDeclaration;
 var
   LNames: TStringList;
+  LLines: TList<Integer>;
   LName, LDef: string;
   LRepeat: Boolean;
   LType: TDataType;
-  LIndex: Integer;
+  i, LIndex: Integer;
   LVarDec: TVarDeclaration;
 begin
   LNames := TStringList.Create();
+  LLines := TList<Integer>.Create();
   LRepeat := False;
   LDef := '0x0';
   LIndex :=0;
   while (not FLexer.PeekToken.IsContent(':')) or LRepeat do
   begin
+    LLines.Add(GetCurrentLine());
     LNames.Add(FLexer.GetToken('', ttIdentifier).Content);
     LRepeat := False;
     if FLexer.PeekToken.IsContent(',') then
@@ -1197,10 +1199,11 @@ begin
   begin
     LIndex := -1;
   end;
-  for LName in LNames do
+  for i := 0 to LNames.Count - 1 do
   begin
+    LName := LNames.Strings[i];
     LVarDec := TVarDeclaration.Create(LName, LType);
-    LVarDec.Line := GetCurrentLine();
+    LVarDec.Line := LLines.Items[i];
     LVarDec.IsConst := AAsConst;
     LVarDec.DefaultValue := LDef;
     if AAsParameter or AAsLocal then
@@ -1221,6 +1224,7 @@ begin
     AScope.Add(LVarDec);
   end;
   LNames.Free;
+  LLines.Free;
 end;
 
 procedure TD16Parser.ParseVars;
