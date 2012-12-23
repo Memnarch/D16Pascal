@@ -86,7 +86,7 @@ begin
   begin
     AWriter.Write('set x, a');
   end;
-  for i := 1 to LMax do
+  for i := LMax downto 1 do
   begin
     AWriter.Write('set ' + LRegisters[i] + ', pop');
   end;
