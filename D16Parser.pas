@@ -387,7 +387,6 @@ begin
       begin
         Break;
       end;
-//      LBlock.Source := LBlock.Source + sLineBreak;
       Continue;
     end;
     LToken := FLexer.GetToken();
@@ -413,7 +412,7 @@ begin
       end;
     end;
     LLine := LLine + LContent + ' ';
-    if LToken.FollowedByNewLine then
+    if LToken.FollowedByNewLine or ((not FLexer.EOF) and FLexer.PeekToken.IsContent(';')) then
     begin
       LBlock.Source.Add(LLine);
       LLine := '';
