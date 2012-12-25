@@ -365,9 +365,12 @@ var
   LBlock: TASMBlock;
   LContent, LLine: string;
   LVar: TVarDeclaration;
+  LLineNumber: Integer;
+  i: Integer;
 begin
   LBlock := TASMBlock.Create('');
   LLine := '';
+  LLineNumber := -1;
   AScope.Add(LBlock);
   LBlock.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('asm');
@@ -388,6 +391,10 @@ begin
         Break;
       end;
       Continue;
+    end;
+    if LLineNumber = -1 then
+    begin
+      LLineNumber := FLexer.PeekToken.FoundInLine - LBlock.Line;
     end;
     LToken := FLexer.GetToken();
     LContent := LToken.Content;
@@ -414,12 +421,24 @@ begin
     LLine := LLine + LContent + ' ';
     if LToken.FollowedByNewLine or ((not FLexer.EOF) and FLexer.PeekToken.IsContent(';')) then
     begin
+      if LBlock.Source.Count > 0 then
+      begin
+        for i := 1 to LLineNumber - (LBlock.Source.Count + 1) do
+        begin
+          LBlock.Source.Add('');
+        end;
+      end;
       LBlock.Source.Add(LLine);
       LLine := '';
+      LLineNumber := -1;
     end;
   end;
   if LLine <> '' then
   begin
+    for i := 1 to LLineNumber - (LBlock.Source.Count + 1) do
+    begin
+      LBlock.Source.Add('');
+    end;
     LBlock.Source.Add(LLine);
   end;
   FLexer.GetToken('end');
