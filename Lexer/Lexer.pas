@@ -495,6 +495,10 @@ begin
   begin
     if FTokens.Items[i].IsType(ttComment) then
     begin
+      if ((i-1) >= 0) and FTokens.Items[i].FollowedByNewLine then
+      begin
+        FTokens.Items[i-1].FollowedByNewLine := True;
+      end;
       FTokens.Delete(i);
     end;
   end;
