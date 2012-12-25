@@ -537,17 +537,49 @@ begin
   end
   else
   begin
-    LLeftSide := FLexer.GetToken('', ttIdentifier).Content;
-    if LIsPointer and FLexer.PeekToken.IsContent('+') then
+    if FLexer.PeekToken.IsType(ttCharLiteral) and (Length(FLexer.PeekToken.Content) = 1) then
     begin
-      FLexer.GetToken('+');
+      AParam.FValue := Integer(FLexer.GetToken().Content[1]) and $7F;
       AParam.HasValue := True;
+      LLeftSide := IntToStr(AParam.FValue);
+    end
+    else
+    begin
+      LLeftSide := FLexer.GetToken('', ttIdentifier).Content;
+    end;
+  end;
+  if LIsPointer and FLexer.PeekToken.IsContent('+') then
+  begin
+    FLexer.GetToken('+');
+    if FLexer.PeekToken.IsType(ttNumber) and (not AParam.HasValue) then
+    begin
       LRightSide := FLexer.GetToken('', ttNumber).Content;
       AParam.FValue := StrToInt(LRightSide);
+      AParam.HasValue := True;
+    end
+    else
+    begin
+      if FLexer.PeekToken.IsType(ttCharLiteral) and (Length(FLexer.PeekToken.Content) = 1) and (not AParam.HasValue) then
+      begin
+        AParam.FValue := Integer(FLexer.GetToken().Content[1]) and $7F;
+        AParam.HasValue := True;
+        LRightSide := IntToStr(AParam.FValue);
+      end
+      else
+      begin
+        LRightSide := FLexer.GetToken('', ttIdentifier).Content;
+      end;
     end;
   end;
 
-  AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
+  if IsRegister(LRightSide) then
+  begin
+    AParam.FRegCode := GetRegisterCode(LRightSide, LLeftSide, LIsPointer, AIsFirst);
+  end
+  else
+  begin
+    AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
+  end;
   if not IsRegister(LLeftSide) and (not AParam.HasValue) then
   begin
     AParam.LabelName := LLeftSide;
