@@ -519,11 +519,14 @@ procedure TD16Assembler.ParseParameter(AParam: TParameter; AIsFirst: Boolean = T
 var
   LLeftSide, LRightSide: string;
   LIsPointer: Boolean;
+  LLeftIsIdentifier, LRightIsIdentifier: Boolean;
 begin
   AParam.Reset();
   LLeftSide := '';
   LRightSide := '';
   LIsPointer := False;
+  LLeftIsIdentifier := False;
+  LRightIsIdentifier := False;
   if FLexer.PeekToken.IsContent('[') then
   begin
     LIsPointer := True;
@@ -546,6 +549,7 @@ begin
     else
     begin
       LLeftSide := FLexer.GetToken('', ttIdentifier).Content;
+      LLeftIsIdentifier := True;
     end;
   end;
   if LIsPointer and FLexer.PeekToken.IsContent('+') then
@@ -568,6 +572,7 @@ begin
       else
       begin
         LRightSide := FLexer.GetToken('', ttIdentifier).Content;
+        LRightIsIdentifier := True;
       end;
     end;
   end;
@@ -580,10 +585,22 @@ begin
   begin
     AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
   end;
-  if not IsRegister(LLeftSide) and (not AParam.HasValue) then
+
+  if (not IsRegister(LLeftSide)) and LLeftIsIdentifier and (not AParam.HasValue) and (not AParam.HasLabel) then
   begin
     AParam.LabelName := LLeftSide;
   end;
+
+  if (not IsRegister(LRightSide)) and LRightIsIdentifier and (not AParam.HasValue) and (not AParam.HasLabel) then
+  begin
+    AParam.LabelName := LRightSide;
+  end;
+
+  if (LRightIsIdentifier and LLeftIsIdentifier) and ((not IsRegister(LLeftSide)) and (not IsRegister(LRightSide))) then
+  begin
+    raise EAbort.Create('Invalid combination [' + LLeftSide + ' + ' + LRightSide + ']');
+  end;
+
   if LIsPointer then
   begin
     FLexer.GetToken(']');
