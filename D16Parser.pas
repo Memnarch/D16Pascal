@@ -372,7 +372,7 @@ begin
   LLine := '';
   LLineNumber := -1;
   AScope.Add(LBlock);
-  LBlock.Line := FLexer.PeekToken.FoundInLine;
+//  LBlock.Line := FLexer.PeekToken.FoundInLine;
   FLexer.GetToken('asm');
   while not ((FLexer.PeekToken.IsContent('end') and (not FLexer.PeekToken.FollowedByNewLine) and FLexer.AHeadToken.IsContent(';'))) do
   begin
@@ -391,6 +391,10 @@ begin
         Break;
       end;
       Continue;
+    end;
+    if LBlock.Line = -1 then
+    begin
+      LBlock.Line := FLexer.PeekToken.FoundInLine-1;
     end;
     if LLineNumber = -1 then
     begin
