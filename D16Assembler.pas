@@ -155,6 +155,8 @@ begin
 end;
 
 constructor TD16Assembler.Create;
+var
+  i: Integer;
 begin
   FLexer := TLexer.Create;
   FLexer.SimpleTokensOnly := True;
@@ -169,6 +171,11 @@ begin
   FErrorLine := -1;
   FCurrentMapping := -1;
   InitOpcodes();
+
+  for i := 0 to High(FMemory) do
+  begin
+    FMemory[i] := 0;
+  end;
 end;
 
 destructor TD16Assembler.Destroy;
@@ -270,7 +277,7 @@ begin
     if SameText(ALeft, 'ex') then Result := $1d;
   end;
 
-  if (LRightCode >= 0) then
+  if (LRightCode >= 0) and (Result >= 0) then
   begin
     Result := $10 + Result;
     if (LRightCode <> $1f) or (Result > $17) then
@@ -426,7 +433,7 @@ begin
         else
         begin
           PushAdressForLabel(FPC, FLexer.GetToken('', ttIdentifier).Content);
-          WriteWord($fcfc);
+          WriteWord(0);
         end;
       end
       else
@@ -485,7 +492,7 @@ begin
     end
     else
     begin
-      LParamB.Value := GetAdressForLabel(LParamB.LabelName);
+      LParamB.Value := LParamB.Value + GetAdressForLabel(LParamB.LabelName);
     end;
   end;
   if (LParamB.FRegCode = $1e) or (LParamB.FRegCode = $1f) or (LParamB.FRegCode = $1a)
@@ -502,7 +509,7 @@ begin
     end
     else
     begin
-      LParamA.Value := GetAdressForLabel(LParamA.LabelName);
+      LParamA.Value := LParamA.Value + GetAdressForLabel(LParamA.LabelName);
     end;
   end;
   if (LParamA.FRegCode = $1e) or (LParamA.FRegCode = $1f) or (LParamA.FRegCode = $1a)
@@ -586,12 +593,12 @@ begin
     AParam.FRegCode := GetRegisterCode(LLeftSide, LRightSide, LIsPointer, AIsFirst);
   end;
 
-  if (not IsRegister(LLeftSide)) and LLeftIsIdentifier and (not AParam.HasValue) and (not AParam.HasLabel) then
+  if (not IsRegister(LLeftSide)) and LLeftIsIdentifier and (not AParam.HasLabel) then
   begin
     AParam.LabelName := LLeftSide;
   end;
 
-  if (not IsRegister(LRightSide)) and LRightIsIdentifier and (not AParam.HasValue) and (not AParam.HasLabel) then
+  if (not IsRegister(LRightSide)) and LRightIsIdentifier and (not AParam.HasLabel) then
   begin
     AParam.LabelName := LRightSide;
   end;
@@ -651,7 +658,7 @@ begin
     begin
       LAddress := StrToInt(FAdressStack.Names[i]);
       LValue := GetAdressForLabel(FAdressStack.ValueFromIndex[i]);
-      FMemory[LAddress] := LValue;
+      FMemory[LAddress] := FMemory[LAddress] + LValue;//in case the base is different
       FAdressStack.Delete(i);
     end;
   end;
