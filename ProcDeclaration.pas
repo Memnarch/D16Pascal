@@ -86,10 +86,10 @@ end;
 procedure TProcDeclaration.GetDCPUSource;
 begin
 //  AWriter.AddMapping(Self);
-  AWriter.AddMapping(Self, StartLine - Line, False);//mark the entryline of prolog
   AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
+    AWriter.AddMapping(Self, StartLine - Line, False);//mark the entryline of prolog
     AWriter.Write('set push, j');
     if FLocals.Count > 0 then
     begin
