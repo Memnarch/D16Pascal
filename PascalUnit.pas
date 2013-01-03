@@ -75,8 +75,8 @@ begin
       LElement.GetDCPUSource(AWriter);
     end;
   end;
-  AWriter.Write(FFooterSource.Text);
-//  Result := LInit + Result + LData + FFooterSource.Text;
+  AWriter.WriteList(FFooterSource);
+  AWriter.Write('');//one emptyline for padding, otherwhise we screw mapping...
 end;
 
 end.
