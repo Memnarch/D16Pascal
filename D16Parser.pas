@@ -49,7 +49,7 @@ type
     procedure ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseVars(AScope: TObjectList<TCodeElement>);
     procedure ParseVarDeclaration(AScope: TObjectList<TCodeElement>; AIncludeEndMark: Boolean = True;
-      AAsParameter: Boolean = False; AAsLocal: Boolean = False; AAsConst: Boolean = False);
+      AAsParameter: Boolean = False; AAsLocal: Boolean = False; AAsConst: Boolean = False; AIndexOffset: Integer = 0);
     procedure ParseConsts(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineDeclaration(AScope: TObjectList<TCodeElement>);
     procedure ParseRoutineParameters(AScope: TObjectList<TCodeElement>);
@@ -106,7 +106,7 @@ const
 implementation
 
 uses
-  StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
+  Math, StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
 
 { TCompiler }
 
@@ -342,7 +342,7 @@ var
   LResult: TDataType;
 begin
   Result := AType;
-  while Result.RawType = rtArray do
+  while (Result.RawType = rtArray) or (Result.RawType = rtString) do
   begin
     for i := 0 to Result.Dimensions.Count - 1 do
     begin
@@ -588,7 +588,7 @@ end;
 
 function TD16Parser.ParseConstantFactor(AFactor: TFactor): TDataType;
 var
-  LTempID, LContent, LData: string;
+  LTempID, LContent, LString, LData: string;
 begin
   if FLexer.PeekToken.IsType(ttCharLiteral) then
   begin
@@ -596,11 +596,8 @@ begin
     LTempID := FCurrentUnit.GetUniqueID('str');
     AFactor.Value := LTempID;
     LContent := FLexer.GetToken().Content;
-    LData := ':' + LTempID + ' dat "' + StringReplace(LContent,'\n', '",10,"',[]) + '"';
-    if Length(LContent) > 1 then
-    begin
-      LData := LData + ', 0x0';
-    end;
+    LString := StringReplace(LContent,'\n', '",10,"',[]);
+    LData := ':' + LTempID + ' dat ' + IntToStr(Length(LString)) + ', ' + '"' + LString + '"';
     FCurrentUnit.FooterSource.Add(LData);
   end
   else
@@ -725,7 +722,7 @@ begin
     begin
       Result := Result.BaseType;
     end;
-    if (Result.RawType = rtArray) then
+    if (Result.RawType = rtArray) or (Result.RawType = rtString) then
     begin
       Result := ParseArrayModifiers(Result, LFactor.Modifiers, LFactor.ModifierMax);
     end;
@@ -987,7 +984,7 @@ begin
   FLexer.GetToken('var');
   while not FLexer.PeekToken.IsType(ttReserved) do
   begin
-    ParseVarDeclaration(LScope, True, False, True);
+    ParseVarDeclaration(LScope, True, False, True, False, AProc.Parameters.Count + AProc.Locals.Count);
   end;
   for LElement in LScope do
   begin
@@ -1001,7 +998,7 @@ begin
   FLexer.GetToken('(');
   while not FLexer.PeekToken.IsContent(')') do
   begin
-    ParseVarDeclaration(AScope, False, True);
+    ParseVarDeclaration(AScope, False, True, False, False, AScope.Count);
     if not FLexer.PeekToken.IsContent(')') then
     begin
       FLexer.GetToken(';');
@@ -1173,7 +1170,7 @@ procedure TD16Parser.ParseVarDeclaration;
 var
   LNames: TStringList;
   LLines: TList<Integer>;
-  LName, LDef: string;
+  LName, LDef, LString: string;
   LRepeat: Boolean;
   LType: TDataType;
   i, LIndex: Integer;
@@ -1202,7 +1199,8 @@ begin
     FLexer.GetToken();
     if LType.RawType = rtString then
     begin
-      LDef := '"' + StringReplace(FLexer.GetToken('', ttCharLiteral).Content, '\n', '",10,"', [rfReplaceAll, rfIgnoreCase]) + '",0x0';
+      LString := StringReplace(FLexer.GetToken('', ttCharLiteral).Content, '\n', '",10,"', [rfReplaceAll, rfIgnoreCase]);
+      LDef := IntToStr(Length(LString)) + ', "' + LString + '"';
     end
     else
     begin
@@ -1215,11 +1213,11 @@ begin
   end;
   if AAsParameter then
   begin
-    LIndex := 1;
+    LIndex := AIndexOffset + 1;//determining the ParameterIndex in the parameterlist
   end;
   if AAsLocal then
   begin
-    LIndex := -1;
+    LIndex := -1 - AIndexOffset;
   end;
   for i := 0 to LNames.Count - 1 do
   begin
@@ -1277,7 +1275,9 @@ end;
 procedure TD16Parser.RegisterBasicTypes;
 begin
   RegisterType('word');
-  RegisterType('string', 2, rtString);
+  RegisterType('char', 2, rtUInteger);
+  RegisterType('string', 2, rtString, GetDataType('char'));
+  GetDataType('string').Dimensions.Add(1);
   RegisterType('boolean', 2, rtBoolean);
   RegisterType('pointer', 2, rtPointer, GetDataType('word'));
 end;

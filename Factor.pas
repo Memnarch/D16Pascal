@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  StrUtils, SysUtils;
+  StrUtils, SysUtils, DataType;
 
 { TFactor }
 
@@ -161,7 +161,14 @@ begin
     else
     begin
       //Result := 'set push, [' + FVarDeclaration.GetAccessIdentifier() + ']' + sLineBreak;
-      LValToPush := '[' + FVarDeclaration.GetAccessIdentifier() + ']';
+      if FVarDeclaration.DataType.RawType = rtString then
+      begin
+        LValToPush := FVarDeclaration.GetAccessIdentifier();
+      end
+      else
+      begin
+        LValToPush := '[' + FVarDeclaration.GetAccessIdentifier() + ']';
+      end;
     end;
   end;
   AWriter.Write('set push, ' + LValToPush);

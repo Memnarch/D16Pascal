@@ -62,7 +62,7 @@ begin
         Result := 'c';
       end;
       else
-        LMod :=  FParamIndex-4;
+        LMod :=  FParamIndex-3 + 1;//+1 because otherwhise we hit the index for the return address on the stack;
         Result := 'j';
         if LMod > 0 then
         begin

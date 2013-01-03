@@ -47,7 +47,7 @@ var
 begin
   for LElement in FParameters do
   begin
-    if TVarDeclaration(LElement).ParamIndex > 2 then
+    if TVarDeclaration(LElement).ParamIndex > 3 then
     begin
       TVarDeclaration(LElement).ParamIndex := TVarDeclaration(LElement).ParamIndex +1;
     end;
