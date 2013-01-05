@@ -48,10 +48,10 @@ begin
   LFile := ExtractFileName(AFile);
   LCompiler.SearchPath.Add(LMainPath);
   LCompiler.CompileFile(LFile);
-  LOut.Text := Trim(LCompiler.GetDCPUSource());
-  RefreshTargetIdent(LOut);
   if LCompiler.Errors+LCompiler.Fatals = 0 then
   begin
+    LOut.Text := Trim(LCompiler.GetDCPUSource());
+    RefreshTargetIdent(LOut);
     LSavePath := LMainPath + ChangeFileExt(LFile, '.asm');
     LOut.SaveToFile(LSavePath);
     AOnMessage('Saved to: ' + LSavePath, '', 0, mlNone);
