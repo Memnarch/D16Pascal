@@ -506,13 +506,15 @@ begin
     Result := Result.BaseType;
   end;
   Result := ParsePostExpression(Result, LAssignment.Modifiers, LAssignment.ModifierMax);
+  LAssignment.TargetType := Result;
   FLexer.GetToken(':=');
   LRelType := ParseRelation(LAssignment.SubElements);
+  LAssignment.SourceType := LRelType;
   if AIncludeEndmark then
   begin
     FLexer.GetToken(';');
   end;
-  if LRelType.RawType <> Result.RawType then
+  if (LRelType.RawType <> Result.RawType) or ((Result.RawType = rtArray) and (not SameText(Result.Name, LRelType.Name))) then
   begin
     Fatal('Cannot assign ' + QuotedStr(LRelType.Name) + ' to ' + QuotedStr(Result.Name));
   end;
