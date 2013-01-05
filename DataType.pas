@@ -14,6 +14,7 @@ type
     FSize: Integer;
     FBaseType: TDataType;
     FDimensions: TList<Integer>;
+    function GetIsStaticArray: Boolean;
   public
     constructor Create(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
       ABaseType: TDataType = nil);
@@ -22,6 +23,7 @@ type
     property RawType: TRawType read FRawType;
     property BaseType: TDataType read FBaseType;
     property Dimensions: TList<Integer> read FDimensions;
+    property IsStaticArray: Boolean read GetIsStaticArray;
   end;
 
 implementation
@@ -43,6 +45,11 @@ begin
   begin
     FBaseType := Self;
   end;
+end;
+
+function TDataType.GetIsStaticArray: Boolean;
+begin
+  Result := (RawType = rtArray) and (FDimensions.Count > 0);
 end;
 
 function TDataType.GetRamWordSize: Integer;
