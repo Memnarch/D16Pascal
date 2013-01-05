@@ -3,17 +3,22 @@ unit Assignment;
 interface
 
 uses
-  Classes, Types, Generics.Collections, CodeElement, OpElement, VarDeclaration, WriterIntf, DataType;
+  Classes, Types, SysUtils, Generics.Collections, CodeElement, OpElement, VarDeclaration, WriterIntf, DataType;
 
 type
   TAssignment = class(TOpElement)
   private
     FTargetVar: TVarDeclaration;
     FDereference: Boolean;
+    FTargetType: TDataType;
+    FSourceType: TDataType;
+    procedure GenerateArrayAssignment(AWriter: IWriter; ALeft, ARight: string);
   public
     procedure GetDCPUSource(AWriter: IWriter); override;
     property TargetVar: TVarDeclaration read FTargetVar write FTargetVar;
     property Dereference: Boolean read FDereference write FDereference;
+    property TargetType: TDataType read FTargetType write FTargetType;
+    property SourceType: TDataType read FSourceType write FSourceType;
   end;
 
 implementation
@@ -21,6 +26,37 @@ implementation
 uses
   StrUtils, Optimizer;
 { TAssignment }
+
+procedure TAssignment.GenerateArrayAssignment(AWriter: IWriter; ALeft,
+  ARight: string);
+var
+  LLabel: string;
+  i: Integer;
+begin
+  if TargetType.IsStaticArray and (TargetType.GetRamWordSize() < 11) then
+  begin
+    for i := 0 to TargetType.GetRamWordSize() - 1 do
+    begin
+      AWriter.Write('set [' + ALeft + ' + ' + IntToStr(i) + '], [' + ARight + ' + ' + IntToStr(i) + ']');
+    end;
+  end
+  else
+  begin
+    LLabel := GetUniqueID('CopyLoop');
+    AWriter.Write('set push, j');
+    AWriter.Write('set push, i');
+    AWriter.Write('set z, [' + ALeft + ' + 0xFFFF]');//-1 to get length
+    AWriter.Write('set i, ' + ALeft);
+    AWriter.Write('set j, ' + ARight);
+    AWriter.Write(':' + LLabel);
+    AWriter.Write('sti [i], [j]');
+    AWriter.Write('sub z, 1');
+    AWriter.Write('ifg z, 0');
+    AWriter.Write('set pc, ' + LLabel);
+    AWriter.Write('set i, pop');
+    AWriter.Write('set j, pop');
+  end;
+end;
 
 procedure TAssignment.GetDCPUSource;
 var
@@ -38,7 +74,14 @@ begin
       Self.Write('add y, pop');
     end;
     Self.Write('set x, pop');
-    Self.Write('set [y], x');
+    if ((TargetType.RawType = rtArray) and (SourceType.RawType = rtArray)) then
+    begin
+      GenerateArrayAssignment(Self, 'y', 'x');
+    end
+    else
+    begin
+      Self.Write('set [y], x');
+    end;
   end
   else
   begin
@@ -49,10 +92,24 @@ begin
       begin
         Self.Write('set y, pop');
         Self.Write('add y, ' + LAccess);
-        LAccess := '[y]';
+        if TargetType.RawType = rtArray then
+        begin
+          LAccess := 'y';
+        end
+        else
+        begin
+          LAccess := '[y]';
+        end;
       end;
       Self.Write('set x, pop');
-      Self.Write('set ' + LAccess + ', x');
+      if ((TargetType.RawType = rtArray) and (SourceType.RawType = rtArray)) then
+      begin
+        GenerateArrayAssignment(Self, LAccess, 'x');
+      end
+      else
+      begin
+        Self.Write('set ' + LAccess + ', x');
+      end;
     end
     else
     begin
@@ -75,7 +132,14 @@ begin
         LAccess := 'y';
       end;
       Self.Write('set x, pop');
-      Self.Write('set [' + LAccess + '], x');
+      if ((TargetType.RawType = rtArray) and (SourceType.RawType = rtArray)) then
+      begin
+        GenerateArrayAssignment(Self, LAccess, 'x');
+      end
+      else
+      begin
+        Self.Write('set [' + LAccess + '], x');
+      end;
     end;
   end;
   OptimizeDCPUCode(Self.FSource, Self.FSource);
