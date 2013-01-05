@@ -70,6 +70,8 @@ type
     function ParseConstantFactor(AFactor: TFactor): TDataType;
     function ParseArrayModifiers(AType: TDataType; AScope: TObjectList<TCodeElement>;
       AMaxList: TList<Integer>):TDataType;
+    function ParsePostExpression(AType: TDataType; AScope: TObjectList<TCodeElement>;
+      AMaxList: TList<Integer>):TDataType;
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
@@ -127,6 +129,7 @@ begin
     on E: Exception do
     begin
       DoMessage(E.Message, ExtractFileName(AFile), 0, mlFatal);
+      Inc(FFatals);
     end;
   end;
 end;
@@ -143,6 +146,7 @@ begin
     on E: Exception do
     begin
       DoMessage(E.Message, '', 0, mlFatal);
+      Inc(FFatals);
     end;
   end;
 end;
@@ -180,6 +184,23 @@ begin
   finally
     FCurrentUnit := LLastUnit;
     FLexer := LLastLexer;
+  end;
+end;
+
+function TD16Parser.ParsePostExpression(AType: TDataType;
+  AScope: TObjectList<TCodeElement>; AMaxList: TList<Integer>): TDataType;
+begin
+  Result := AType;
+  if FLexer.PeekToken.IsContent('[') then
+  begin
+    if (Result.RawType = rtPointer) and (Result.BaseType.RawType = rtArray) then
+    begin
+      Result := Result.BaseType;
+    end;
+    if (Result.RawType = rtArray) or (Result.RawType = rtString) then
+    begin
+      Result := ParseArrayModifiers(Result, AScope, AMaxList);
+    end;
   end;
 end;
 
@@ -456,7 +477,7 @@ var
   LOverride: TDataType;
 begin
   LOverride := nil;
-  LAssignment := TAssignment.Create('');
+  LAssignment := TAssignment.Create();
   LAssignment.Line := FLexer.PeekToken.FoundInLine;
   if FLexer.PeekToken.IsType(ttIdentifier) and FLexer.AHeadToken.IsContent('(') then
   begin
@@ -484,6 +505,7 @@ begin
   begin
     Result := Result.BaseType;
   end;
+  Result := ParsePostExpression(Result, LAssignment.Modifiers, LAssignment.ModifierMax);
   FLexer.GetToken(':=');
   LRelType := ParseRelation(LAssignment.SubElements);
   if AIncludeEndmark then
@@ -716,17 +738,7 @@ begin
   begin
     Result := Result.BaseType;
   end;
-  if FLexer.PeekToken.IsContent('[') then
-  begin
-    if (Result.RawType = rtPointer) and (Result.BaseType.RawType = rtArray) then
-    begin
-      Result := Result.BaseType;
-    end;
-    if (Result.RawType = rtArray) or (Result.RawType = rtString) then
-    begin
-      Result := ParseArrayModifiers(Result, LFactor.Modifiers, LFactor.ModifierMax);
-    end;
-  end;
+  Result := ParsePostExpression(Result, LFactor.Modifiers, LFactor.ModifierMax);
   if LFactor.GetAdress then
   begin
     Result := GetDataType('pointer');
