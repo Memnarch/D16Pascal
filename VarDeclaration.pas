@@ -98,6 +98,7 @@ begin
   if DataType.RawType = rtArray then
   begin
     LSize := DataType.GetRamWordSize();
+    AWriter.Write(':' + GetAccessIdentifier() + 'length dat 0x' + IntToHex(LSize, 4));
     for i := 0 to LSize - 1 do
     begin
       LLine := LLine + '0x0';
