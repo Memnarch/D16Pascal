@@ -868,6 +868,7 @@ begin
   if LCall.ProcDeclaration.IsFunction then
   begin
     Result := LCall.ProcDeclaration.ResultType;
+    LCall.IgnoreResult := AIncludeEndMark;//if we are not in an expression, returnvalue must be ignored or we screw the stack
   end
   else
   begin
@@ -988,18 +989,21 @@ begin
   if LProc.IsDummy then Exit;//in interfacesection, we parse ONLY the header
 
   LDummy := TProcDeclaration(FCurrentUnit.GetElement(LProc.Name, TProcDeclaration));
-  if LDummy.IsDummy then
+  if Assigned(LDummy) then
   begin
-    if not LProc.DeclarationMatches(LDummy) then
+    if LDummy.IsDummy then
     begin
-      Error('Previous declaration of ' + QuotedStr(LProc.Name) + ' differs from implementation declaration');
-    end;
-  end
-  else
-  begin
-    if LDummy <> LProc then //oh, we haven't found ourself? its redeclared!
+      if not LProc.DeclarationMatches(LDummy) then
+      begin
+        Error('Previous declaration of ' + QuotedStr(LProc.Name) + ' differs from implementation declaration');
+      end;
+    end
+    else
     begin
-      Error('Can not redeclare routine ' + QuotedStr(LProc.Name) + ' in same unit');
+      if LDummy <> LProc then //oh, we haven't found ourself? its redeclared!
+      begin
+        Error('Can not redeclare routine ' + QuotedStr(LProc.Name) + ' in same unit');
+      end;
     end;
   end;
   if FLexer.PeekToken.IsContent('var') then

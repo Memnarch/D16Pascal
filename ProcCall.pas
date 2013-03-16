@@ -10,6 +10,7 @@ type
   private
     FParameters: TObjectList<TCodeElement>;
     FProcDeclaration: TProcDeclaration;
+    FIgnoreResult: Boolean;
   public
     constructor Create(); 
     destructor Destroy(); override;
@@ -17,6 +18,7 @@ type
     function GetWordSizeOfLocals(): Integer;
     property ProcDeclaration: TProcDeclaration read FProcDeclaration write FProcDeclaration;
     property Parameters: TObjectList<TCodeElement> read FParameters write FParameters;
+    property IgnoreResult: Boolean read FIgnoreResult write FIgnoreResult;
   end;
 
 implementation
@@ -30,6 +32,7 @@ constructor TProcCall.Create;
 begin
   inherited Create('');
   FParameters := TObjectList<TCodeElement>.Create();
+  FIgnoreResult := False;
 end;
 
 destructor TProcCall.Destroy;
@@ -82,7 +85,7 @@ begin
   begin
     AWriter.Write('add sp, ' + IntToStr(FParameters.Count-3));
   end;
-  if ProcDeclaration.IsFunction then
+  if ProcDeclaration.IsFunction and (not FIgnoreResult) then
   begin
     AWriter.Write('set x, a');
   end;
@@ -90,7 +93,7 @@ begin
   begin
     AWriter.Write('set ' + LRegisters[i] + ', pop');
   end;
-  if ProcDeclaration.IsFunction then
+  if ProcDeclaration.IsFunction and (not FIgnoreResult) then
   begin
     AWriter.Write('set push, x');
   end;
