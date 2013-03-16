@@ -282,7 +282,7 @@ begin
   RemoveEmptyLines(ALines);
 end;
 
-procedure OptimizeMovNopMov(ALines: TStrings);
+procedure OptimizeMovNopMovOrOp(ALines: TStrings);
 var
   LOpA, LOpB, LTargetA, LTargetB, LSourceA, LSourceB: string;
   i, k: Integer;
@@ -307,7 +307,9 @@ begin
       for k := i+1 to ALines.Count-1 do
       begin
         SplitLine(ALines.Strings[k], LOpB, LTargetB, LSourceB);
-        if  SameText(LSourceA, LTargetB) or SameText(LSourceB, LTargetA) then
+        if  SameText(LSourceA, LTargetB)
+        //the following line prevents a screwup for specific push/pop case(dont know them anymore -.-)
+          or (SameText(LSourceB, LTargetA) and (SameText(LSourceA, 'pop') or SameText(LTargetB, 'push'))) then
         begin
           Break;
         end;
@@ -398,7 +400,7 @@ begin
       OptimizeMoveOP(LLines);
       OptimizeMoveOpMove(LLines);
       OptimizePushNopPop(LLines);
-      OptimizeMovNopMov(LLines);
+      OptimizeMovNopMovOrOp(LLines);
       OptimizeMovNopIf(LLines);
     end;
   end;
