@@ -8,6 +8,8 @@ uses
   Factor, CompilerDefines, LineMapping, UnitCache, WriterIntf;
 
 type
+  TSectionType = (tsInterface, tsImplementation);
+
   TD16Parser = class(TUncountedInterfacedObject, IOperations)
   private
     FLexer: TLexer;
@@ -23,6 +25,7 @@ type
     FHints: Integer;
     FPeekMode: Boolean;
     FNilDataType: TDataType;
+    FCurrentSectionType: TSectionType;
     procedure ParsePascalUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
       AParseAsProgramm: Boolean = False);
     procedure RegisterType(AName: string; ASize: Integer = 2; APrimitive: TRawType = rtUInteger;
@@ -41,7 +44,7 @@ type
     procedure ParseUnit();
     procedure ParseUnitHeader();
     procedure ParseUnitFooter();
-    procedure ParseUnitSectionContent();
+    procedure ParseUnitSectionContent(AScope: TObjectList<TCodeElement>);
     procedure ParseProgram();
     procedure ParseProgramHeader();
     procedure ParseUses(AScope: TObjectList<TCodeElement>);
@@ -74,6 +77,7 @@ type
       AMaxList: TList<Integer>):TDataType;
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
     procedure Fatal(AMessage: string);
+    procedure Error(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
     function GetPathForFile(AFile: string): string;
     function GetCurrentLine(): Integer;
@@ -109,6 +113,9 @@ implementation
 
 uses
   Math, StrUtils, Relation, Expression, Term, Assignment, Condition, Loops, ProcCall, CaseState, Optimizer;
+
+const
+  CSysUnit = 'System';
 
 { TCompiler }
 
@@ -160,6 +167,7 @@ begin
   LLastLexer := FLexer;
   FUnits.Add(AUnit);
   FCurrentUnit := AUnit;
+  FCurrentUnit.UsedUnits.Add(CSysUnit);
   FLexer := AUnit.Lexer;
   try
     try
@@ -242,6 +250,11 @@ begin
   end;
 end;
 
+procedure TD16Parser.Error(AMessage: string);
+begin
+  DoMessage(AMessage, FCurrentUnit.Name, FLexer.PeekToken.FoundInLine, mlError);
+end;
+
 function TD16Parser.ExpectElement(AName: string;
   AType: TCodeElementClass): TCodeElement;
 begin
@@ -286,8 +299,13 @@ begin
       Exit;
     end;
   end;
+  Result := FCurrentUnit.GetElementFromAll(AName, AType);
+  if Assigned(Result) then Exit;
+
   for LUnit in FUnits do
   begin
+    if (LUnit <> FCurrentUnit) and (FCurrentUnit.UsedUnits.IndexOf(LUnit.Name) < 0) then Continue;
+
     LElement := LUnit.GetElement(AName, AType);
     if Assigned(LElement) then
     begin
@@ -773,13 +791,14 @@ end;
 
 procedure TD16Parser.ParseProgram;
 begin
+  FCurrentSectionType := tsImplementation;
   ParseProgramHeader();
   if Units.CountUnitName(FCurrentUnit.Name) > 1 then
   begin
     FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
     Exit();
   end;
-  ParseUnitSectionContent();
+  ParseUnitSectionContent(FCurrentUnit.ImplementationSection);
   FLexer.GetToken('begin');
   ParseRoutineContent(FCurrentUnit.InitSection);
   ParseUnitFooter();
@@ -937,7 +956,7 @@ end;
 
 procedure TD16Parser.ParseRoutineDeclaration;
 var
-  LProc: TProcDeclaration;
+  LProc, LDummy: TProcDeclaration;
   LIsFunction: Boolean;
 begin
   if FLexer.PeekToken.IsContent('function') then
@@ -965,6 +984,24 @@ begin
     end;
   end;
   FLexer.GetToken(';');
+  LProc.IsDummy := FCurrentSectionType = tsInterface;
+  if LProc.IsDummy then Exit;//in interfacesection, we parse ONLY the header
+
+  LDummy := TProcDeclaration(FCurrentUnit.GetElement(LProc.Name, TProcDeclaration));
+  if LDummy.IsDummy then
+  begin
+    if not LProc.DeclarationMatches(LDummy) then
+    begin
+      Error('Previous declaration of ' + QuotedStr(LProc.Name) + ' differs from implementation declaration');
+    end;
+  end
+  else
+  begin
+    if LDummy <> LProc then //oh, we haven't found ourself? its redeclared!
+    begin
+      Error('Can not redeclare routine ' + QuotedStr(LProc.Name) + ' in same unit');
+    end;
+  end;
   if FLexer.PeekToken.IsContent('var') then
   begin
     ParseRoutineLocals(LProc);
@@ -1090,20 +1127,29 @@ begin
 end;
 
 procedure TD16Parser.ParseUnit;
+var
+  LLastSectionType: TSectionType;
 begin
+  LLastSectionType := FCurrentSectionType;
   ParseUnitHeader();
   if Units.CountUnitName(FCurrentUnit.Name) > 1 then
   begin
     FUnits.Delete(FUnits.IndexOf(FCurrentUnit));
     Exit();
   end;
-  ParseUnitSectionContent();
+  FLexer.GetToken('interface',ttReserved);
+  FCurrentSectionType := tsInterface;
+  ParseUnitSectionContent(FCurrentUnit.InterfaceSection);
+  FLexer.GetToken('implementation',ttReserved);
+  FCurrentSectionType := tsImplementation;
+  ParseUnitSectionContent(FCurrentUnit.ImplementationSection);
   if FLexer.PeekToken.IsContent('initialization') then
   begin
     FLexer.GetToken();
     ParseRoutineContent(FCurrentUnit.InitSection);
   end;
   ParseUnitFooter();
+  FCurrentSectionType :=LLastSectionType;
 end;
 
 procedure TD16Parser.ParseUnitFooter;
@@ -1119,34 +1165,34 @@ begin
   FLexer.GetToken.MatchContent(';');
 end;
 
-procedure TD16Parser.ParseUnitSectionContent;
+procedure TD16Parser.ParseUnitSectionContent(AScope: TObjectList<TCodeElement>);
 begin
   while True do
   begin
     case AnsiIndexText(FLexer.PeekToken.Content, ['uses', 'var', 'const', 'procedure', 'function', 'type']) of
       0:
       begin
-        ParseUses(FCurrentUnit.SubElements);
+        ParseUses(AScope);
       end;
 
       1:
       begin
-        ParseVars(FCurrentUnit.SubElements);
+        ParseVars(AScope);
       end;
 
       2:
       begin
-        ParseConsts(FCurrentUnit.SubElements);
+        ParseConsts(AScope);
       end;
 
       3, 4:
       begin
-        ParseRoutineDeclaration(FCurrentUnit.SubElements);
+        ParseRoutineDeclaration(AScope);
       end;
 
       5:
       begin
-        ParseTypes(FCurrentUnit.SubElements);
+        ParseTypes(AScope);
       end
       else
         break;

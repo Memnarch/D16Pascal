@@ -15,6 +15,7 @@ type
     FLocals: TObjectList<TCodeElement>;
     FStartLine: Integer;
     FEndLine: Integer;
+    FIsDummy: Boolean;
     function GetIsFunction: Boolean;
   public
     constructor Create(const AName: string);
@@ -23,12 +24,15 @@ type
     procedure GetDCPUSource(AWriter: IWriter); override;
     function GetElement(AName: string; AType: TCodeElementClass): TCodeElement;
     function GetCurrentWordSpaceOfLocals(): Integer;
+    function ParameterMatches(AProc: TProcDeclaration): Boolean;
+    function DeclarationMatches(AProc: TProcDeclaration): Boolean;
     property IsFunction: Boolean read GetIsFunction;
     property ResultType: TDataType read FResultType write FResultType;
     property Parameters: TObjectList<TCodeElement> read FParameters;
     property Locals: TObjectList<TCodeElement> read FLocals;
     property StartLine: Integer read FStartLine write FStartLine;
     property EndLine: Integer read FEndLine write FEndLine;
+    property IsDummy: Boolean read FIsDummy write FIsDummy;
   end;
 
 implementation
@@ -70,6 +74,16 @@ begin
   inherited Create(AName);
   FParameters := TObjectList<TCodeElement>.Create();
   FLocals := TObjectList<TCodeElement>.Create();
+  FIsDummy := False;
+end;
+
+function TProcDeclaration.DeclarationMatches(AProc: TProcDeclaration): Boolean;
+begin
+  Result := SameText(Name, AProc.Name) and (IsFunction = AProc.IsFunction);
+  if Result then
+  begin
+    Result := ParameterMatches(AProc);
+  end;
 end;
 
 function TProcDeclaration.GetCurrentWordSpaceOfLocals: Integer;
@@ -85,7 +99,8 @@ end;
 
 procedure TProcDeclaration.GetDCPUSource;
 begin
-//  AWriter.AddMapping(Self);
+  if Self.IsDummy then Exit; // a dummy NEVER produces source, but is used by the compiler for ahead declaration
+  
   AWriter.Write(':' + Name);
   if (FParameters.Count > 3) or (FLocals.Count > 0) then
   begin
@@ -149,6 +164,23 @@ end;
 function TProcDeclaration.GetIsFunction: Boolean;
 begin
   Result := Assigned(FResultType);
+end;
+
+function TProcDeclaration.ParameterMatches(AProc: TProcDeclaration): Boolean;
+var
+  i: Integer;
+begin
+  Result := Parameters.Count = AProc.Parameters.Count;
+  if Result then
+  begin
+    for i := 0 to Parameters.Count - 1 do
+    begin
+      Result := SameText(Parameters[i].Name, AProc.Parameters[i].Name)
+        and (TVarDeclaration(Parameters[i]).DataType = TVarDeclaration(AProc.Parameters[i]).DataType);
+
+      if not Result then Break;
+    end;
+  end;
 end;
 
 end.

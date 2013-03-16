@@ -120,6 +120,8 @@ begin
   FReserved.Add('asm');
   FReserved.Add('function');
   FReserved.Add('procedure');
+  FReserved.Add('interface');
+  FReserved.Add('implementation');
 end;
 
 procedure TLexer.InsertLineBreak;
