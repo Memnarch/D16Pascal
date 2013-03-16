@@ -19,6 +19,7 @@ type
     procedure Write(ALine: string); virtual;
     procedure WriteList(AList: TStrings); virtual;
     procedure AddMapping(AElement: TObject; AOffset: Integer = 0; AHideName: Boolean = False); virtual;
+    function GetElementInScope(AName: string; AType: TCodeElementClass; AScope: TObjectList<TCodeElement>): TCodeElement;
   public
     constructor Create(AName: string);
     destructor Destroy(); override;
@@ -72,11 +73,17 @@ end;
 
 function TCodeElement.GetElement(AName: string;
   AType: TCodeElementClass): TCodeElement;
+begin
+  Result := GetElementInScope(AName, AType, FSubElements);
+end;
+
+function TCodeElement.GetElementInScope(AName: string; AType: TCodeElementClass;
+  AScope: TObjectList<TCodeElement>): TCodeElement;
 var
   LElement: TCodeElement;
 begin
   Result := nil;
-  for LElement in FSubElements do
+  for LElement in AScope do
   begin
     if SameText(AName, LElement.Name) and LElement.InheritsFrom(AType) then
     begin
