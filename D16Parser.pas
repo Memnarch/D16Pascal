@@ -1405,6 +1405,7 @@ end;
 
 procedure TD16Parser.Reset;
 begin
+  FUnits.Clear();
   Initialize();
 end;
 
