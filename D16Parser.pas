@@ -5,7 +5,7 @@ interface
 uses
   Classes, Types, Generics.Collections, SysUtils, UncountedInterfacedObject, Lexer, Token, CodeElement, DataType,
   VarDeclaration, PascalUnit, ProcDeclaration, ASMBlock, Operation, Operations,
-  Factor, CompilerDefines, LineMapping, UnitCache, WriterIntf;
+  Factor, CompilerDefines, LineMapping, UnitCache, WriterIntf, DUmmyCollection;
 
 type
   TSectionType = (tsInterface, tsImplementation);
@@ -24,7 +24,7 @@ type
     FFatals: Integer;
     FHints: Integer;
     FPeekMode: Boolean;
-    FNilDataType: TDataType;
+    FDummies: TDummyCollection;
     FCurrentSectionType: TSectionType;
     procedure ParsePascalUnit(AUnit: TPascalUnit; ACatchException: Boolean = False;
       AParseAsProgramm: Boolean = False);
@@ -219,7 +219,7 @@ begin
   FOperations := TObjectList<TOperation>.Create();
   FSearchPath := TStringList.Create();
   FPeekMode := False;
-  FNilDataType := TDataType.Create('NilType', 0, rtNilType);
+  FDummies := TDummyCollection.Create();
   Initialize();
 end;
 
@@ -227,6 +227,7 @@ destructor TD16Parser.Destroy;
 begin
   FSearchPath.Free;
   FOperations.Free;
+  FDummies.Free;
   inherited;
 end;
 
@@ -280,7 +281,8 @@ begin
   Result := TDataType(GetElement(AName, TDataType));
   if not Assigned(Result) then
   begin
-    Fatal(QuotedStr(AName) + ' is not a declared datatype');
+    Result := FDummies.DataType;
+    Error(QuotedStr(AName) + ' is not a declared datatype');
   end;
 end;
 
@@ -332,8 +334,13 @@ begin
   end;
   if not Assigned(Result) then
   begin
-    Fatal('Operator ' + QuotedStr(AOperation) + ' not applicable to ' +
-      QuotedStr(ALeftType.Name) + ' and ' + QuotedStr(ARightType.Name));
+    Result := FDummies.Operation;
+    if not (SameText(ALeftType.Name, FDummies.DataType.Name)
+      or SameText(ARightType.Name, FDummies.DataType.Name)) then
+    begin//no error if we tried to handle a dummytype. This means something else went wrong before anyway!
+      Error('Operator ' + QuotedStr(AOperation) + ' not applicable to ' +
+        QuotedStr(ALeftType.Name) + ' and ' + QuotedStr(ARightType.Name));
+    end;
   end;
 end;
 
@@ -361,7 +368,8 @@ begin
   Result := TVarDeclaration(GetElement(AName, TVarDeclaration));
   if not Assigned(Result) then
   begin
-    Fatal(QuotedStr(AName) + ' is not a declared Var');
+    Result := FDummies.Variable;
+    Error(QuotedStr(AName) + ' is not a declared Var');
   end;
 end;
 
@@ -390,7 +398,7 @@ begin
       AMaxList.Add(Result.Dimensions.Items[i]);
       if LResult.RawType <> rtUInteger then
       begin
-        Fatal('The result of a relation in an array modifier must be an unsigned integer');
+        Error('The result of a relation in an array modifier must be an unsigned integer');
       end;
       FLexer.GetToken(']');
     end;
@@ -505,7 +513,7 @@ begin
   LAssignment.TargetVar := GetVar(FLexer.GetToken('', ttIdentifier).Content);
   if LAssignment.TargetVar.IsConst then
   begin
-    Fatal('Cannot assign to a const value');
+    Error('Cannot assign to a const value');
   end;
   AScope.Add(LAssignment);
   if FLexer.PeekToken.IsContent('^') then
@@ -534,7 +542,10 @@ begin
   end;
   if (LRelType.RawType <> Result.RawType) or ((Result.RawType = rtArray) and (not SameText(Result.Name, LRelType.Name))) then
   begin
-    Fatal('Cannot assign ' + QuotedStr(LRelType.Name) + ' to ' + QuotedStr(Result.Name));
+    if not ((LRelType = FDummies.DataType) or (Result = FDummies.DataType)) then
+    begin
+      Error('Cannot assign ' + QuotedStr(LRelType.Name) + ' to ' + QuotedStr(Result.Name));
+    end;
   end;
 end;
 
@@ -552,16 +563,16 @@ begin
     LRepeat := False;
     if ParseFactor(LCase.ConstValues).RawType <> rtUInteger then
     begin
-      Fatal('value must be of type unsigned Integer');
+      Error('value must be of type unsigned Integer');
     end;
     LFactor := TFactor(LCase.ConstValues.Items[LCase.ConstValues.Count-1]);
     if (not LFactor.IsConstant) and ((Assigned(LFactor.VarDeclaration) and (not LFactor.VarDeclaration.IsConst))) then
     begin
-      Fatal('Value must be of type const');
+      Error('Value must be of type const');
     end;
     if (LFactor.SubElements.Count > 0) or LFactor.Inverse or LFactor.GetAdress or LFactor.Dereference then
     begin
-      Fatal('illegal statement');
+      Error('illegal statement');
     end;
     if FLexer.PeekToken.IsContent(',') then
     begin
@@ -586,7 +597,7 @@ begin
   FLexer.GetToken('case');
   if ParseRelation(LStatement.Relation).RawType <> rtUInteger then
   begin
-    Fatal('Relation of Case requires returntype of unsigned integer');
+    Error('Relation of Case requires returntype of unsigned integer');
   end;
   FLexer.GetToken('of');
   while (not FLexer.PeekToken.IsContent('end')) and (not FLexer.PeekToken.IsContent('else')) do
@@ -739,7 +750,7 @@ begin
         Result := LFactor.VarDeclaration.DataType;
         if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
         begin
-          Fatal('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
+          Error('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
         end;
       end;
     end;
@@ -751,7 +762,7 @@ begin
     LFactor.Dereference := True;
     if LFactor.GetAdress then
     begin
-      Fatal('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
+      Error('Cannot get the adress of ' + QuotedStr(LFactor.VarDeclaration.Name) + ' and dereference it at the same time');
     end;
   end;
   if LFactor.Dereference then
@@ -775,12 +786,12 @@ begin
   FLexer.GetToken('for');
   if ParseAssignment(LFor.Assignment, False).RawType <> rtUInteger then
   begin
-    Fatal('assignment must be of type unsigned integer');
+    Error('assignment must be of type unsigned integer');
   end;
   FLexer.GetToken('to');
   if ParseRelation(LFor.Relation).RawType <> rtUInteger then
   begin
-    Fatal('Result of relation must be of type unsigned integer');
+    Error('Result of relation must be of type unsigned integer');
   end;
   FLexer.GetToken('do');
   FLexer.GetToken('begin');
@@ -860,7 +871,7 @@ var
   i: Integer;
   LParamType: TDataType;
 begin
-  Result := FNilDataType;
+  Result := FDummies.DataType;
   LCall := TProcCall.Create();
   AScope.Add(LCall);
   LCall.Line := FLexer.PeekToken.FoundInLine;
@@ -883,8 +894,12 @@ begin
     LParamType := ParseRelation(LCall.Parameters);
     if  LParamType.RawType <> TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).DataType.RawType then
     begin
-      Fatal('Cannot assign ' + QuotedStr(LParamType.Name) +
-        ' to ' + QuotedStr(TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).Name));
+      if not ((LParamType = FDummies.DataType)
+        or (TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).DataType = FDummies.DataType))then
+      begin
+        Error('Cannot assign ' + QuotedStr(LParamType.Name) +
+          ' to ' + QuotedStr(TVarDeclaration(LCall.ProcDeclaration.Parameters.Items[i]).Name));
+      end;
     end;
 
     if i < LCall.ProcDeclaration.Parameters.Count - 1 then
@@ -981,7 +996,7 @@ begin
     LProc.ResultType := GetDataType(FLexer.GetToken('', ttIdentifier).Content);
     if LProc.ResultType.RawType = rtArray then
     begin
-      Fatal('You can not use a static array as resulttype');
+      Error('You can not use a static array as resulttype');
     end;
   end;
   FLexer.GetToken(';');
