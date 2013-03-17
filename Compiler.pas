@@ -136,6 +136,7 @@ end;
 function TCompiler.PeekCompile(ASource, AUnitName: string; AAsProgram: Boolean; var AUnit: TPascalUnit): Boolean;
 begin
   try
+    FParser.ResetResults();
     FParser.Units.ClearUnitCache(AUnitName);
     FParser.ParseSource(ASource, AAsProgram);
     AUnit := FParser.Units.GetUnitByName(AUnitName);
