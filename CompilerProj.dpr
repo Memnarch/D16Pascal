@@ -37,7 +37,8 @@ uses
   UnitCache in 'UnitCache.pas',
   D16Writer in 'D16Writer.pas',
   VarMapping in 'VarMapping.pas',
-  RoutineMapping in 'RoutineMapping.pas';
+  RoutineMapping in 'RoutineMapping.pas',
+  DummyCollection in 'DummyCollection.pas';
 
 {$R *.res}
 
