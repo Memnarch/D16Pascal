@@ -1257,10 +1257,10 @@ var
 begin
   LNames := TStringList.Create();
   LLines := TList<Integer>.Create();
-  LRepeat := False;
+  LRepeat := True;
   LDef := '0x0';
   LIndex :=0;
-  while (not FLexer.PeekToken.IsContent(':')) or LRepeat do
+  while LRepeat do
   begin
     LLines.Add(GetCurrentLine());
     LNames.Add(FLexer.GetToken('', ttIdentifier).Content);
