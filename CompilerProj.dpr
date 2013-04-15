@@ -38,7 +38,8 @@ uses
   D16Writer in 'D16Writer.pas',
   VarMapping in 'VarMapping.pas',
   RoutineMapping in 'RoutineMapping.pas',
-  DummyCollection in 'DummyCollection.pas';
+  DummyCollection in 'DummyCollection.pas',
+  CompilerVersion in 'CompilerVersion.pas';
 
 {$R *.res}
 

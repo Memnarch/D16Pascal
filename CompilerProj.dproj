@@ -90,6 +90,7 @@
 			<DCCReference Include="VarMapping.pas"/>
 			<DCCReference Include="RoutineMapping.pas"/>
 			<DCCReference Include="DummyCollection.pas"/>
+			<DCCReference Include="CompilerVersion.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
