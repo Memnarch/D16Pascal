@@ -81,11 +81,11 @@ end;
 
 function TLexer.GetChar: Char;
 begin
-  //Result := #0;
-  //if FPos <= Length(FSource) then
-  //begin
+  Result := #0;
+  if FPos <= Length(FSource) then
+  begin
     Result := FSource[FPos];
-  //end;
+  end;
 end;
 
 function TLexer.GetEOF: Boolean;
