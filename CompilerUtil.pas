@@ -79,7 +79,7 @@ begin
           LMapping := LCompiler.GetMappingByASMLine(LAssembler.ErrorLine);
           if Assigned(LMapping)  then
           begin
-            AOnMessage(e.Message, ChangeFileExt(LMapping.D16UnitName, '.pas'), LMapping.UnitLine, mlFatal);
+            AOnMessage(e.Message, LMapping.D16UnitName, LMapping.UnitLine, mlFatal);
           end
           else
           begin
