@@ -216,7 +216,7 @@ begin
   end
   else
   begin
-    Result := FLexer.PeekToken.FoundInLine;
+    Result := FLexer.PreviousToken.FoundInLine;
   end;
 end;
 
