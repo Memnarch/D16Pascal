@@ -76,8 +76,10 @@ type
     function ParsePostExpression(AType: TDataType; AScope: TObjectList<TCodeElement>;
       AMaxList: TList<Integer>):TDataType;
     procedure ParseASMBlock(AScope: TObjectList<TCodeElement>);
+    function ParseTernaryOperation(AScope: TObjectList<TCodeElement>): TDataType;
     procedure Fatal(AMessage: string);
     procedure Error(AMessage: string);
+    procedure Warning(AMessage: string);
     procedure DoMessage(AMessage, AUnit: string; ALine: Integer; ALevel: TMessageLevel);
     function GetPathForFile(AFile: string): string;
     function GetCurrentLine(): Integer;
@@ -243,6 +245,11 @@ begin
     mlFatal:
     begin
       Inc(FFatals);
+    end;
+
+    mlWarning:
+    begin
+      Inc(FWarning);
     end;
   end;
   if Assigned(FOnMessage) then
@@ -741,16 +748,23 @@ begin
       end
       else
       begin
-        if FLexer.PeekToken.IsContent('@') then
+        if FLexer.PeekToken.IsContent('if') then
         begin
-          FLexer.GetToken('@');
-          LFactor.GetAdress := True;
-        end;
-        LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
-        Result := LFactor.VarDeclaration.DataType;
-        if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
+          Result := ParseTernaryOperation(LFactor.SubElements);
+        end
+        else
         begin
-          Error('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
+          if FLexer.PeekToken.IsContent('@') then
+          begin
+            FLexer.GetToken('@');
+            LFactor.GetAdress := True;
+          end;
+          LFactor.VarDeclaration := GetVar(FLexer.GetToken('', ttIdentifier).Content);
+          Result := LFactor.VarDeclaration.DataType;
+          if LFactor.GetAdress and LFactor.VarDeclaration.IsParameter then
+          begin
+            Error('Cannot receive adress of Paremeter ' + QuotedStr(LFactor.VarDeclaration.Name));
+          end;
         end;
       end;
     end;
@@ -1099,6 +1113,28 @@ begin
   end;
 end;
 
+function TD16Parser.ParseTernaryOperation(AScope: TObjectList<TCodeElement>): TDataType;
+var
+  LCondition: TCondition;
+  LFirst, LSecond: TDataType;
+begin
+  Warning('Ternary-Operations are experimental. No Optimization or propper DebugMapping supported! Turn Optimization off to avoid broken code!');
+  LCondition := TCondition.Create();
+  LCondition.DoInline := True;
+  AScope.Add(LCondition);
+  FLexer.GetToken('if');
+  ParseRelation(LCondition.Relation);
+  FLexer.GetToken('then');
+  LFirst := ParseRelation(LCondition.SubElements);
+  FLexer.GetToken('else');
+  LSecond := ParseRelation(LCondition.ElseElements);
+  Result := LFirst;
+  if not (LFirst = LSecond) then
+  begin
+    Error('Both ternary evaluations need the exact same datatype');
+  end;
+end;
+
 procedure TD16Parser.ParseTypeDeclaration(AScope: TObjectList<TCodeElement>);
 var
   LType: TDataType;
@@ -1430,6 +1466,11 @@ begin
   FErrors := 0;
   FWarning := 0;
   FHints := 0;
+end;
+
+procedure TD16Parser.Warning(AMessage: string);
+begin
+  DoMessage(AMessage, FCurrentUnit.Name, FLexer.PeekToken.FoundInLine, mlWarning);
 end;
 
 end.
