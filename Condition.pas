@@ -10,12 +10,14 @@ type
   private
     FElseElements: TObjectList<TCodeElement>;
     FRelation: TObjectList<TCodeElement>;
+    FDoInline: Boolean;
   public
     constructor Create();
     destructor Destroy(); override;
     procedure GetDCPUSource(AWriter: IWriter); override;
     property ElseElements: TObjectList<TCodeElement> read FElseElements;
     property Relation: TObjectList<TCodeElement> read FRelation;
+    property DoInline: Boolean read FDoInline write FDoInline;
   end;
 
 implementation
@@ -44,7 +46,9 @@ var
   LID, LEnd, LElse: string;
   LElement: TCodeElement;
 begin
-  AWriter.AddMapping(Self);
+  if not FDoInline then
+    AWriter.AddMapping(Self);
+
   LID := GetUniqueID();
   LEnd := 'End' + LID;
   LElse := 'Else' +  LID;
