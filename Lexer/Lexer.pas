@@ -10,6 +10,7 @@ type
   private
     FSource: string;
     FPos: Integer;
+    FLastLineOffset: Integer;
     FLine: Integer;
     FTokenIndex: Integer;
     FTokens: TObjectList<TToken>;
@@ -134,6 +135,7 @@ begin
     FTokens.Items[FTokens.Count-1].FollowedByNewLine := True;
   end;
   FLinePos := FPos - 1;
+  FLastLineOffset := 0;
 end;
 
 function TLexer.IsNextChar(AChar: Char): Boolean;
@@ -175,12 +177,20 @@ procedure TLexer.NewToken(AContent: string; AType: TTokenType);
 var
   LToken: TToken;
 begin
+  //-/+1 for Char literal is required to extend tokens boundaries
+  //by the quotes, they are not included in the content
   LToken := TToken.Create(AContent, AType);
   LToken.FoundInLine := FLine;
   LToken.LineOffset := (FPos - Length(AContent)) - FLinePos;
   if AType = ttCharLiteral then
   begin
     LToken.LineOffset := LToken.LineOffset - 1;
+  end;
+  LToken.RelativeLineOffset := LToken.LineOffset - FLastLineOffset;
+  FLastLineOffset := LToken.LineOffset + Length(AContent);
+  if AType = ttCharLiteral then
+  begin
+    FLastLineOffset := FLastLineOffset + 1;
   end;
   FTokens.Add(LToken);
 end;
@@ -383,6 +393,7 @@ var
   LChar: Char;
 begin
   FPos := 1;
+  FLastLineOffset := 0;
   FLine := 1;
   FLinePos := 0;
   while FPos <= Length(FSource) do

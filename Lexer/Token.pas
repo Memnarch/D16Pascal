@@ -17,6 +17,7 @@ type
     FFollowedByNewLine: Boolean;
     FFoundInLine: Integer;
     FLineOffset: Integer;
+    FRelativeLineOffset: Integer;
   public
     constructor Create(AContent: string; AType: TTokenType);
     function IsContent(AContent: string): Boolean;
@@ -29,6 +30,7 @@ type
     property FollowedByNewLine: Boolean read FFollowedByNewLine write FFollowedByNewLine;
     property FoundInLine: Integer read FFoundInLine write FFoundInLine;
     property LineOffset: Integer read FLineOffset write FLineOffset;
+    property RelativeLineOffset: Integer read FRelativeLineOffset write FRelativeLineOffset;
   end;
 
   function GetTokenName(AType: TTokenType): string;
