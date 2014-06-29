@@ -16,6 +16,7 @@ type
     FReserved: TStringList;
     FSimpleTokensOnly: Boolean;
     FLinePos: Integer;
+    FKeepComments: Boolean;
     procedure ParseSource();
     procedure ParseIdentifier();
     procedure ParseOperator();
@@ -46,6 +47,7 @@ type
     property Tokens: TObjectList<TToken> read FTokens;
     property EOF: Boolean read GetEOF;
     property SimpleTokensOnly: Boolean read FSimpleTokensOnly write FSimpleTokensOnly;
+    property KeepComments: Boolean read FKeepComments write FKeepComments;
   end;
 
 implementation
@@ -163,7 +165,10 @@ begin
   FTokens.Clear;
   FTokenIndex := 0;
   ParseSource();
-  RemoveComments();
+  if not FKeepComments then
+  begin
+    RemoveComments();
+  end;
 end;
 
 procedure TLexer.NewToken(AContent: string; AType: TTokenType);
@@ -359,18 +364,17 @@ begin
   LContent := '';
   while not IsParseEOF do
   begin
-    if (GetChar() = #10) or ((GetChar() = #13) and CanPeek(1) and (PeekChar(1) = #10))  then
+    LContent := LContent + GetChar();
+    if not CanPeek(1) or (PeekChar(1) = #10) or (PeekChar(1) = #13)  then
     begin
       Break;
     end
     else
     begin
-      LContent := GetChar();
+      NextChar();
     end;
-    NextChar();
   end;
   NewToken(LContent, ttComment);
-  FTokens.Items[FTokens.Count - 1].FollowedByNewLine := True;
 end;
 
 procedure TLexer.ParseSource;
