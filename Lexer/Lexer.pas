@@ -15,6 +15,7 @@ type
     FTokens: TObjectList<TToken>;
     FReserved: TStringList;
     FSimpleTokensOnly: Boolean;
+    FLinePos: Integer;
     procedure ParseSource();
     procedure ParseIdentifier();
     procedure ParseOperator();
@@ -130,6 +131,7 @@ begin
   begin
     FTokens.Items[FTokens.Count-1].FollowedByNewLine := True;
   end;
+  FLinePos := FPos - 1;
 end;
 
 function TLexer.IsNextChar(AChar: Char): Boolean;
@@ -170,6 +172,7 @@ var
 begin
   LToken := TToken.Create(AContent, AType);
   LToken.FoundInLine := FLine;
+  LToken.LineOffset := (FPos - Length(AContent)) - FLinePos;
   FTokens.Add(LToken);
 end;
 
@@ -365,6 +368,7 @@ var
 begin
   FPos := 1;
   FLine := 1;
+  FLinePos := 0;
   while FPos <= Length(FSource) do
   begin
     if FPos >= Length(FSource) then
