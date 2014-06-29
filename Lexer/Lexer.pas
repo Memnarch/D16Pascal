@@ -159,7 +159,7 @@ end;
 
 procedure TLexer.LoadFromString(AString: string);
 begin
-  FSource := Trim(AString);
+  FSource := AString;
   FTokens.Clear;
   FTokenIndex := 0;
   ParseSource();
@@ -212,11 +212,17 @@ begin
   LContent := '';
   //LContent := GetChar();
   //NextChar();
-  while (not IsParseEOF) and CharInSet(GetChar(), ['A'..'Z','a'..'z','0'..'9', '_']) do
+  while (not IsParseEOF) do
   begin
     LContent := LContent + GetChar();
-    NextChar();
-    //LChar := GetChar();
+    if CharInSet(PeekChar(1), ['A'..'Z','a'..'z','0'..'9', '_']) then
+    begin
+      NextChar();
+    end
+    else
+    begin
+      Break;
+    end;
   end;
   if FSimpleTokensOnly then
   begin
@@ -247,6 +253,7 @@ begin
       NewToken(LContent, ttReserved);
     end;
   end;
+  NextChar();
 end;
 
 procedure TLexer.ParseMultiComment;
