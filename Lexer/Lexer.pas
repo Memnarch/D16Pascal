@@ -173,6 +173,10 @@ begin
   LToken := TToken.Create(AContent, AType);
   LToken.FoundInLine := FLine;
   LToken.LineOffset := (FPos - Length(AContent)) - FLinePos;
+  if AType = ttCharLiteral then
+  begin
+    LToken.LineOffset := LToken.LineOffset - 1;
+  end;
   FTokens.Add(LToken);
 end;
 
