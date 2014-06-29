@@ -93,7 +93,7 @@ end;
 
 function TLexer.GetEOF: Boolean;
 begin
-  Result := FTokenIndex = FTokens.Count-1;
+  Result := FTokenIndex >= FTokens.Count-1;
 end;
 
 function TLexer.GetToken(AContent: string = ''; AType: TTokenType = ttNone): TToken;
