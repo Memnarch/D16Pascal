@@ -275,12 +275,12 @@ begin
     LContent := LContent + GetChar();
     if GetChar() = '}' then
     begin
-      NextChar();
       Break;
     end;
     NextChar();
   end;
   NewToken(LContent, ttComment);
+  NextChar();
 end;
 
 procedure TLexer.ParseNumber;
@@ -375,6 +375,7 @@ begin
     end;
   end;
   NewToken(LContent, ttComment);
+  NextChar();
 end;
 
 procedure TLexer.ParseSource;
